@@ -112,6 +112,26 @@
       add('Broker transfer', 'Realized after DEGIRO → IBKR transfer: 10 × (160 − 100)', 600, r.realized.reduce((a, b) => a + b.pnl, 0));
       add('Broker transfer', 'Holding period counted from the original purchase (days)', 151, r.trips[0].holdDays, 0, 'num');
     }
+    {
+      // both legs on one day, the incoming leg listed first
+      const s = st([inst('T2', 'EUR')], [
+        tx('2025-01-02', 'T2', 'buy', 10, 100, 0, 1, { broker: 'DEGIRO' }),
+        tx('2025-05-20', 'T2', 'transfer_in', 10, 150, 0, 1, { broker: 'IBKR' }),
+        tx('2025-05-20', 'T2', 'transfer_out', 10, 150, 0, 1, { broker: 'DEGIRO' })
+      ], [], {});
+      const r = PT.compute(s, { asOf: '2025-06-03' });
+      add('Broker transfer', 'Same-day transfer out and in: shares held (not doubled)', 10, r.positions[0].qty, 0, 'num');
+    }
+
+    /* ---------- 6b. Cross-listed security ---------- */
+    {
+      // priced in EUR (its Tradegate listing) but bought on NASDAQ in USD
+      const s = st([inst('CL', 'EUR')], [
+        tx('2025-01-02', 'CL', 'buy', 10, 100, 0, 1.1, { currency: 'USD' })
+      ], [], {}, { USD: [['2025-01-02', 1.1]] });
+      const r = PT.compute(s, { asOf: '2025-01-03' });
+      add('Cross-listing', 'Value from the USD trade price: 10 × 100 $ ÷ 1,10', 909.09, r.positions[0].value, 0.01);
+    }
 
     /* ---------- 7. Attribution reconciles ---------- */
     {

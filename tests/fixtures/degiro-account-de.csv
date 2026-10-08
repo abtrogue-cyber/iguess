@@ -1,6 +1,9 @@
 Datum,Uhrzeit,Valutadatum,Produkt,ISIN,Beschreibung,FX,Änderung,,Saldo,,Order-Id
 07-10-2026,14:28,30-09-2026,,,Zinsen,,EUR,"-0,01",EUR,"-2,56",
 03-06-2026,08:26,31-05-2026,,,Einrichtung von Handelsmodalitäten 2026 (London Stock Exchange (LSE) - LSE),,EUR,"-2,50",EUR,"-2,50",
+22-03-2026,08:00,20-03-2026,BNP ACME ROBOTICS CALL STR 300 R 0.100 20/03/2026,DE000PX0AAA1,"AUSZAHLUNG ZERTIFIKAT: Verkauf 300 zu je 0,001 EUR (DE000PX0AAA1)",,EUR,"0,30",EUR,"0,30",
+16-03-2026,06:50,15-03-2026,,,Währungswechsel (Einbuchung),,EUR,"15,60",EUR,"15,90",
+16-03-2026,06:50,15-03-2026,,,Währungswechsel (Ausbuchung),"1,0900",USD,"-17,00",USD,"0,00",
 15-03-2026,07:10,14-03-2026,ACME ROBOTICS INC CLASS A,US0000000001,Dividende,,USD,"20,00",USD,"20,00",
 15-03-2026,07:10,14-03-2026,ACME ROBOTICS INC CLASS A,US0000000001,Dividendensteuer,,USD,"-3,00",USD,"17,00",
 02-03-2026,15:40,02-03-2026,ACME ROBOTICS INC CLASS A,US0000000001,"Verkauf 10 zu je 190 USD (US0000000001)",,USD,"1900,00",USD,"1900,00",bbbb-2222
@@ -9,3 +12,6 @@ Datum,Uhrzeit,Valutadatum,Produkt,ISIN,Beschreibung,FX,Änderung,,Saldo,,Order-I
 02-01-2026,09:05,02-01-2026,,,flatex Einzahlung,,EUR,"5000,00",EUR,"5000,00",
 02-01-2026,09:06,02-01-2026,,,Währungswechsel (Ausbuchung),"1,1700",EUR,"-6410,26",EUR,"-1410,26",
 10-06-2026,10:00,10-06-2026,,,Auszahlung,,EUR,"-1200,00",EUR,"0,00",
+10-06-2026,10:00,10-06-2026,,,Processed Flatex Withdrawal,,EUR,"1200,00",EUR,"1200,00",
+08-06-2026,16:00,08-06-2026,,,Processed Flatex Withdrawal,,EUR,"-1200,00",EUR,"0,00",
+05-01-2026,00:00,04-01-2026,MORGAN STANLEY EUR LIQUIDITY FUND,LU1959429272,Geldmarktfonds Preisänderung (EUR),,EUR,"-0,02",EUR,"0,28",

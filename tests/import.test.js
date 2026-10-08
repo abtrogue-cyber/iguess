@@ -17,13 +17,19 @@ module.exports = function (PT) {
   const buy = R.trades.find(t => t.type === 'buy' && t.currency === 'USD');
   check('German decimals + fees (2,00 + AutoFX 16,03)', buy && buy.price === 150 && close(buy.fee, 18.03) && close(buy.fx, 1.17), JSON.stringify(buy));
   check('Chronological order (oldest first)', R.trades[0].date === '2026-01-05');
+  const wp = R.protos['ISIN:DE000PX0AAA1'];
+  check('Bank warrant → type warrant, ticker = WKN', wp && wp.type === 'warrant' && wp.ticker === 'PX0AAA', wp && wp.type + ' ' + wp.ticker);
+  const payout = R.trades.find(t => t.key === 'ISIN:DE000PX0AAA1' && t.date === '2026-03-20');
+  check('Warrant payout at 00:00 without order ID is a sale, not a transfer', payout && payout.type === 'sell', payout && payout.type);
+  check('Structured-product names', PT.isStructuredProduct('BNP PAR.EHG CALL26 ACM ACME CORP. STR 300 R 10') && PT.isStructuredProduct('SG ACME INC TURBO UNLIMITED MINI CALL BAR 80') && !PT.isStructuredProduct('CALLAWAY GOLF CO') && !PT.isStructuredProduct('PUTNAM INVESTMENTS') && !PT.isStructuredProduct('TURBO ENERGY S.A.'));
 
   let s = PT.emptyState();
   PT.applyImport(s, R);
   let r = PT.compute(s, { asOf: '2026-06-01' });
   const acme = r.positions.find(p => p.inst.isin === 'US0000000001');
+  check('Warrants with alike names but different ISINs stay separate', s.instruments.filter(i => i.type === 'warrant').length === 2, s.instruments.filter(i => i.type === 'warrant').map(i => i.isin).join(','));
   check('Transferred-out position stays in portfolio (40 shares)', acme && close(acme.qty, 40), acme && acme.qty);
-  const rz = r.realized.reduce((a, b) => a + b.pnl, 0);
+  const rz = r.realized.filter(x => x.instId === acme.id).reduce((a, b) => a + b.pnl, 0);
   // sold 10 @190/1.15 − fee 6.13 ; cost 10 × (150/1.17) + fees 10/50×18.03
   const hand = 1900 / 1.15 - 6.13 - (1500 / 1.17 + 18.03 / 5);
   check('Realized P&L of the partial sell (FIFO, EUR)', close(rz, hand), rz.toFixed(2) + ' vs ' + hand.toFixed(2));
@@ -32,8 +38,12 @@ module.exports = function (PT) {
   R = PT.importCSV(fx('degiro-account-de.csv'));
   check('DEGIRO account detected', R.format === 'degiro-account', R.format);
   const types = R.cash.map(c => c.type).sort().join(',');
-  check('Cash classified: deposit, dividend, fee, interest, tax, withdrawal', types === 'deposit,dividend,fee,interest,tax,withdrawal', types);
-  check('Reservation, trade cash, trade fee and FX legs skipped', R.skipped['Internal cash sweep / reservation'] === 1 && R.skipped['Trade cash (in Transactions file)'] === 1 && R.skipped['Trade fee (in Transactions file)'] === 1 && R.skipped['FX conversion leg'] === 1, JSON.stringify(R.skipped));
+  check('Cash classified: deposit, dividend, fee, interest (incl. money-market yield), tax, withdrawal', types === 'deposit,dividend,fee,interest,interest,tax,withdrawal', types);
+  check('Certificate payout skipped (it is a row of the Transactions file)', R.skipped['Certificate payout / corporate action (in Transactions file)'] === 1 && !R.cash.some(c => c.amount === 0.3), JSON.stringify(R.skipped));
+  const usd = R.cash.filter(c => c.currency === 'USD');
+  check('USD dividend + tax converted at the rate of DEGIRO\'s conversion leg (1,09)', usd.length === 2 && usd.every(c => c.fx === 1.09), JSON.stringify(usd.map(c => c.fx)));
+  check('Withdrawal reservation + release skipped, payout counted once', R.cash.filter(c => c.type === 'withdrawal').length === 1 && R.cash.find(c => c.type === 'withdrawal').amount === -1200, JSON.stringify(R.cash.filter(c => c.type === 'withdrawal').map(c => c.amount)));
+  check('Reservation, trade cash, trade fee and FX legs skipped', R.skipped['Internal cash sweep / reservation'] === 3 && R.skipped['Trade cash (in Transactions file)'] === 1 && R.skipped['Trade fee (in Transactions file)'] === 1 && R.skipped['FX conversion leg'] === 3, JSON.stringify(R.skipped));
   const sum1 = PT.applyImport(s, R);
   check('Dividend linked to the existing instrument by ISIN', s.cash.filter(c => c.type === 'dividend')[0].instId === acme.id);
   const sum2 = PT.applyImport(s, PT.importCSV(fx('degiro-account-de.csv')));
@@ -44,10 +54,15 @@ module.exports = function (PT) {
   check('IBKR Transaction History detected', R.format === 'ibkr-history', R.format);
   const hy = R.trades.find(t => t.type === 'sell' && t.currency === 'KRW');
   check('KRW trade: FX derived from EUR gross (≈1546.4 KRW/EUR)', hy && close(hy.fx, 10 * 1819000 / 11763.29, 0.01), hy && hy.fx);
+  check('Trade costs = gross − net (commission 7,06 + Korean transaction tax)', hy && close(hy.fee, 11763.29 - 11732.71), hy && hy.fee);
+  const xeon = R.trades.find(t => t.currency === 'EUR');
+  check('EUR trade price taken from the exact gross amount (149,335, shown rounded as 149,34)', xeon && close(xeon.price, 149.335, 1e-9), xeon && xeon.price);
+  const fxc = R.cash.filter(c => /FX conversion/.test(c.note));
+  check('FX conversion: commission as fee, remainder as FX result', fxc.length === 2 && close(fxc.find(c => c.type === 'fee').amount, -1.74) && close(fxc.find(c => c.type === 'fxadj').amount, -0.01), JSON.stringify(fxc.map(c => [c.type, c.amount])));
   const opt = R.protos['OPT:QQQ 261120P00720000'];
   check('OCC option parsed (expiry 2026-11-20, strike 720, ×100)', opt && opt.expiry === '2026-11-20' && opt.strike === 720 && opt.multiplier === 100);
   const cts = R.cash.map(c => c.type).sort().join(',');
-  check('Cash types: deposits, dividend, WHT, interest, fees, FX adj.', cts === 'deposit,deposit,dividend,fee,fee,fxadj,interest,tax,withdrawal', cts);
+  check('Cash types: deposits, dividend, WHT, interest, fees, FX adj.', cts === 'deposit,deposit,dividend,fee,fee,fxadj,fxadj,interest,tax,withdrawal', cts);
   check('Oldest-first ordering for same-day trades', R.trades[0].date === '2026-07-31');
 
   // IBKR activity

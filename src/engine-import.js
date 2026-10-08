@@ -144,12 +144,21 @@
     // DEGIRO lists newest first → reverse so file order is chronological for same-day sequencing
     if (parsed.length > 1 && parsed[0].date > parsed[parsed.length - 1].date) parsed.reverse();
     const transferHeuristic = opts.degiroTransfers !== false;
+    const keyOf = p => p.isin ? 'ISIN:' + p.isin : 'NAME:' + PT.nameKey(p.name);
+    // The newest name wins (products get renamed), unless it is a cut-off version of the previous one.
+    const bestName = {}, latest = {};
+    parsed.forEach(p => { const k = keyOf(p), cur = bestName[k]; bestName[k] = cur && cur.startsWith(p.name) ? cur : p.name; latest[k] = p; });
     parsed.forEach((p, i) => {
-      const key = p.isin ? 'ISIN:' + p.isin : 'NAME:' + PT.nameKey(p.name);
-      const isOpt = p.mult === 100 || /\b(call|put)\b|\s[CP]\d/i.test(p.name);
-      proto(R, key, { isin: p.isin, name: p.name, ticker: PT.guessTicker(p.name, p.isin), currency: p.cur, exchange: PT.DEGIRO_EXCHANGES[p.ex] || p.ex, type: isOpt ? 'option' : (/\bETF\b|UCITS/i.test(p.name) ? 'etf' : 'stock'), multiplier: p.mult });
+      const key = keyOf(p);
+      const name = bestName[key];
+      const warrant = p.mult !== 100 && PT.isStructuredProduct(name);
+      const isOpt = !warrant && (p.mult === 100 || /\s[CP]\d/.test(name));
+      // the listing traded most recently sets the currency (and exchange) the position is priced in
+      const L = latest[key];
+      proto(R, key, { isin: p.isin, name, ticker: PT.guessTicker(name, p.isin), currency: L.cur, exchange: PT.DEGIRO_EXCHANGES[L.ex] || L.ex, type: warrant ? 'warrant' : isOpt ? 'option' : (/\bETF\b|UCITS/i.test(name) ? 'etf' : 'stock'), multiplier: p.mult });
       let type = p.qty > 0 ? 'buy' : 'sell';
-      if (transferHeuristic && !p.orderId && !p.zeroCost && (p.time === '00:00' || p.time === '') && p.feeEUR === 0) type = p.qty > 0 ? 'transfer_in' : 'transfer_out';
+      // Warrants are not moved between brokers; a booking without an order ID is their payout at expiry or knock-out.
+      if (transferHeuristic && !warrant && !p.orderId && !p.zeroCost && (p.time === '00:00' || p.time === '') && p.feeEUR === 0) type = p.qty > 0 ? 'transfer_in' : 'transfer_out';
       R.trades.push({ key, date: p.date, type, qty: Math.abs(p.qty), price: p.price, currency: p.cur, fx: p.fx, fee: p.feeEUR, broker: 'DEGIRO', extId: p.orderId || '', seq: i, note: type.startsWith('transfer') ? 'Broker transfer (no order ID)' : '' });
     });
     const nT = R.trades.filter(t => t.type.startsWith('transfer')).length;
@@ -160,15 +169,19 @@
   /* ====================================================== DEGIRO account */
   PT.classifyDegiroCash = function (desc, amount) {
     const d = String(desc || '').toLowerCase();
-    if (/reserv|sweep|cash account|geldmarkt|money ?market|flatex.*konto|überweisung auf ihr|transfer (from|to) your/.test(d)) return 'skip:Internal cash sweep / reservation';
+    if (/geldmarktfonds preisänderung|money ?market fund price change/.test(d)) return 'interest'; // yield of the fund cash was swept into
+    // "Processed Flatex Withdrawal" books a withdrawal's reservation (−) and its release (+); the payout itself is "flatex Auszahlung"
+    if (/reserv|sweep|cash account|geldmarkt|money ?market|flatex.*konto|überweisung auf ihr|transfer (from|to) your|processed (flatex )?withdrawal/.test(d)) return 'skip:Internal cash sweep / reservation';
     if (/^(kauf|verkauf|buy|sell|koop|verkoop)\b/.test(d)) return 'skip:Trade cash (in Transactions file)';
     if (/transaktionsgeb|transaction fee|transactiekosten|transaktionskosten|courtage|handelskosten/.test(d)) return 'skip:Trade fee (in Transactions file)';
     if (/währungswechsel|wahrungswechsel|fx (credit|debit)|valuta (creditering|debitering)|currency exchange|autofx|fx withdrawal|fx deposit/.test(d)) return 'skip:FX conversion leg';
     if (/produktänderung|product change|übertrag|ubertrag|transfer of|productwijziging|stock transfer|isin-änderung|isin change/.test(d)) return 'skip:Product change / securities transfer';
+    // "AUSZAHLUNG ZERTIFIKAT: Verkauf 300 zu je 0,001 EUR", "AKTIENDIVIDENDE: Kauf …": securities bookings that are rows of the Transactions file
+    if (/:\s*(kauf|verkauf|buy|sell|koop|verkoop)\s+[\d.,]+\s/.test(d)) return 'skip:Certificate payout / corporate action (in Transactions file)';
     if (/dividendensteuer|dividend tax|dividendbelasting|quellensteuer|withholding/.test(d)) return 'tax';
     if (/kapitalrückzahlung|return of capital|kapitaalsuitkering/.test(d)) return 'dividend';
     if (/dividend/.test(d)) return 'dividend';
-    if (/auszahlung|withdrawal|terugstorting|opname/.test(d)) return 'withdrawal';
+    if (/auszahlung|withdrawal|terugstorting|opname/.test(d)) return amount > 0 ? 'deposit' : 'withdrawal'; // a positive one is a returned payout
     if (/einzahlung|deposit|storting|ideal|sofort|sepa|überweisung|gutschrift/.test(d)) return amount < 0 ? 'withdrawal' : 'deposit';
     if (/zinsen|interest|rente/.test(d)) return 'interest';
     if (/steuer|tax|belasting/.test(d)) return 'tax';
@@ -188,6 +201,15 @@
     };
     if (c.date < 0 || c.desc < 0 || c.change < 0) { R.warnings.push('Could not find the DEGIRO account columns.'); R.needsMapping = true; return R; }
     const unknown = new Set();
+    // Foreign-currency dividends, taxes and fees are converted to EUR a day or two later; the
+    // conversion leg in that currency carries the rate actually applied.
+    const legs = [];
+    if (c.fx >= 0) body.forEach(r => {
+      const m = moneyAt(r, c.change, dec), rate = parseNum(r[c.fx], dec), d = parseDate(r[c.date], 'DMY');
+      if (d && rate > 0 && m.c && m.c !== 'EUR' && /währungswechsel|wahrungswechsel|fx (credit|debit)|valuta (creditering|debitering)|currency exchange|autofx/i.test(r[c.desc] || '')) legs.push({ d: PT.dn(d), c: m.c, fx: rate });
+    });
+    legs.sort((a, b) => a.d - b.d);
+    const legRate = (ccy, booked) => { const d = PT.dn(booked); const l = legs.find(x => x.c === ccy && x.d >= d && x.d - d <= 7); return l ? l.fx : null; };
     body.forEach(r => {
       const date = parseDate(r[c.vdate >= 0 && r[c.vdate] ? c.vdate : c.date], 'DMY') || parseDate(r[c.date], 'DMY');
       if (!date) return;
@@ -205,7 +227,9 @@
       let amount = m.v;
       if (cls === 'withdrawal') amount = -Math.abs(amount);
       if (cls === 'deposit') amount = Math.abs(amount);
-      R.cash.push({ key, date, type: cls, amount, currency: m.c || 'EUR', fx: null, broker: 'DEGIRO', note: desc });
+      const ccy = m.c || 'EUR';
+      const fx = ccy === 'EUR' ? 1 : legRate(ccy, parseDate(r[c.date], 'DMY') || date);
+      R.cash.push({ key, date, type: cls, amount, currency: ccy, fx, broker: 'DEGIRO', note: desc });
     });
     if (unknown.size) R.warnings.push('Unrecognised descriptions (skipped): ' + [...unknown].slice(0, 6).join(' · '));
     return R;
@@ -340,11 +364,24 @@
         if (op) key = op.key;
         else { key = 'TICKER:' + sym; proto(R, key, { ticker: sym, name: desc, currency: pcur, type: 'stock', multiplier: 1 }); }
         const mult = R.protos[key].multiplier || 1;
+        let px = price;
+        // EUR trades: the gross amount is exact while the price may be rounded (149.34 for 149.335)
+        if (pcur === 'EUR' && isFinite(gross) && gross !== 0 && price > 0 && Math.abs(Math.abs(gross) / Math.abs(qty * mult) - price) < price * 0.001) px = Math.abs(gross) / Math.abs(qty * mult);
         const fx = pcur === 'EUR' ? 1 : (isFinite(gross) && gross !== 0 && price > 0 ? Math.abs(qty * price * mult / gross) : null);
-        R.trades.push({ key, date, type: qty > 0 ? 'buy' : 'sell', qty: Math.abs(qty), price, currency: pcur, fx, fee: Math.abs(comm || 0), broker: 'IBKR', seq: seq++, note: '' });
+        // Net − gross also holds transaction taxes and exchange fees beyond the commission (e.g. Korean and Hong Kong stamp duty).
+        const fee = isFinite(net) && isFinite(gross) ? Math.abs(net - gross) : Math.abs(comm || 0);
+        R.trades.push({ key, date, type: qty > 0 ? 'buy' : 'sell', qty: Math.abs(qty), price: px, currency: pcur, fx, fee, broker: 'IBKR', seq: seq++, note: '' });
         return;
       }
       if (!isFinite(amt) || amt === 0) { skip(R, 'Zero amount'); return; }
+      if (/forex trade component/.test(T)) {
+        // The net amount is the conversion commission plus the conversion's FX result in EUR: book them apart.
+        const c = isFinite(comm) ? -Math.abs(comm) : 0;
+        const fxPart = Math.round((amt - c) * 100) / 100;
+        if (c) R.cash.push({ key: null, date, type: 'fee', amount: c, currency: 'EUR', fx: 1, broker: 'IBKR', note: 'FX conversion commission: ' + desc });
+        if (fxPart) R.cash.push({ key: null, date, type: 'fxadj', amount: fxPart, currency: 'EUR', fx: 1, broker: 'IBKR', note: 'FX conversion result: ' + desc });
+        return;
+      }
       let cls = null, key = null;
       if (T === 'dividend' || T === 'payment in lieu of dividends') cls = 'dividend';
       else if (/withholding/.test(T)) cls = 'tax';
@@ -352,7 +389,6 @@
       else if (T === 'withdrawal') cls = 'withdrawal';
       else if (/interest/.test(T)) cls = 'interest';
       else if (/fee|sales tax|commission adj/.test(T)) cls = 'fee';
-      else if (/forex trade component/.test(T)) cls = 'fee';
       else if (/adjustment/.test(T)) cls = 'fxadj';
       if (!cls) { skip(R, 'Unsupported type: ' + type); return; }
       if ((cls === 'dividend' || cls === 'tax') && sym && sym !== '-') {
@@ -360,7 +396,7 @@
         key = 'TICKER:' + sym;
         proto(R, key, { ticker: sym, isin: si ? si.isin : '', name: sym });
       }
-      R.cash.push({ key, date, type: cls, amount: cls === 'withdrawal' ? -Math.abs(amt) : (cls === 'deposit' ? Math.abs(amt) : amt), currency: 'EUR', fx: 1, broker: 'IBKR', note: (/forex/.test(T) ? 'FX conversion: ' : '') + desc });
+      R.cash.push({ key, date, type: cls, amount: cls === 'withdrawal' ? -Math.abs(amt) : (cls === 'deposit' ? Math.abs(amt) : amt), currency: 'EUR', fx: 1, broker: 'IBKR', note: desc });
     });
     R.notes.push('Amounts in this report are in your base currency (EUR); per-trade FX rates were derived as local value ÷ EUR gross amount.');
     return R;
@@ -485,7 +521,8 @@
 
   /* ================================================ apply import to state */
   PT.findInstrument = function (state, p) {
-    const I = state.instruments;
+    // Two different ISINs are two different securities, however alike the names; warrant names are no identity at all.
+    const I = state.instruments.filter(i => !(p.isin && i.isin && i.isin !== p.isin));
     if (p.isin) { const m = I.find(i => i.isin && i.isin === p.isin); if (m) return { inst: m, how: 'ISIN' }; }
     { const m = I.find(i => (i.aliases || []).includes(p.key)); if (m) return { inst: m, how: 'alias' }; }
     if (p.type === 'option') { const m = I.find(i => i.type === 'option' && i.ticker === p.ticker); return m ? { inst: m, how: 'option' } : null; }
@@ -494,8 +531,8 @@
       if (m) return { inst: m, how: 'ticker' };
     }
     const nk = PT.nameKey(p.name);
-    if (nk && nk.length >= 4) {
-      const m = I.find(i => i.type !== 'option' && PT.nameKey(i.name) === nk && (!p.currency || !i.currency || i.currency === p.currency));
+    if (nk && nk.length >= 4 && p.type !== 'warrant') {
+      const m = I.find(i => i.type !== 'option' && i.type !== 'warrant' && PT.nameKey(i.name) === nk && (!p.currency || !i.currency || i.currency === p.currency));
       if (m) return { inst: m, how: 'name' };
     }
     return null;

@@ -190,8 +190,18 @@
   PT.cleanName = function (name) {
     return String(name || '').replace(/\s*-\s*NON TRADEABLE\s*$/i, '').replace(/\s+/g, ' ').trim();
   };
+  /** Bank-issued warrants and certificates (calls, puts, turbos, factor and mini certificates):
+   *  a product word plus a term only such products carry (strike, ratio, barrier, expiry). */
+  PT.isStructuredProduct = function (name) {
+    const n = String(name || '');
+    if (/\b(call|put)\d{2}\b/i.test(n)) return true;
+    return /\b(call|put|turbo|turbol|faktor|factor|mini|unlimited|knock[- ]?out|warrant|optionsschein|zertifikat|certificate|sprinter)\b/i.test(n) &&
+      /\b(str|bar|bv|sl|long|short)\b|\bR \d|\b\d{2}\/\d{2}\/\d{2,4}\b/i.test(n);
+  };
   PT.guessTicker = function (name, isin) {
     if (isin && PT.ISIN_TICKERS[isin]) return PT.ISIN_TICKERS[isin];
+    // German warrants are known by their WKN (ISIN characters 6–11); the first word would only be the issuer.
+    if (isin && PT.isStructuredProduct(name)) return /^DE/.test(isin) ? isin.slice(5, 11) : isin;
     const t = String(name || '').toUpperCase().replace(/[^A-Z0-9 ]+/g, ' ').split(/\s+/).filter(x => x && !NAME_STOP.has(x));
     return (t[0] || 'NEW').slice(0, 8);
   };

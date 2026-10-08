@@ -18,7 +18,8 @@
     showCashInAlloc: false
   };
 
-  const TYPE_ORDER = { split: 0, transfer_in: 1, buy: 2, sell: 3, transfer_out: 4 };
+  // A transfer-out leaves the lots in place, so it can sort first: a same-day transfer-in then finds its match.
+  const TYPE_ORDER = { split: 0, transfer_out: 1, transfer_in: 2, buy: 3, sell: 4 };
   const TRADE_TYPES = ['buy', 'sell', 'split', 'transfer_in', 'transfer_out'];
   const CASH_TYPES = ['deposit', 'withdrawal', 'dividend', 'tax', 'interest', 'fee', 'fxadj'];
   PT.TRADE_TYPES = TRADE_TYPES; PT.CASH_TYPES = CASH_TYPES;
@@ -89,9 +90,16 @@
     Object.keys(state.prices || {}).forEach(id => { priceObs[id] = (state.prices[id] || []).map(o => [dn(o[0]), +o[1]]); });
     txs.forEach(t => {
       const inst = instById[t.instId];
-      if ((t.type === 'buy' || t.type === 'sell' || t.type === 'transfer_in' || t.type === 'transfer_out') && t.cur === (inst.currency || t.cur) && t.price > 0 && !t.synthetic) {
-        (priceObs[t.instId] = priceObs[t.instId] || []).push([t.d, t.price, 'tx']);
+      if (!(t.type === 'buy' || t.type === 'sell' || t.type === 'transfer_in' || t.type === 'transfer_out') || !(t.price > 0) || t.synthetic) return;
+      const ic = inst.currency || t.cur;
+      let p = t.price;
+      if (t.cur !== ic) {
+        // a trade on another listing of the same security (USD on NASDAQ, EUR on Tradegate): translate through EUR
+        const fi = fxAt(ic, t.d);
+        if (!(fi > 0) || !(t.fxEff > 0)) return;
+        p = t.price / t.fxEff * fi;
       }
+      (priceObs[t.instId] = priceObs[t.instId] || []).push([t.d, p, 'tx']);
     });
     // stored observations must win over transaction prices on the same day
     const priceSeries = {};

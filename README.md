@@ -50,3 +50,15 @@ node tools/build.js   # rebuild index.html
 - FX rates are units of foreign currency per 1 EUR (USD 1.16), as DEGIRO and the ECB quote them.
 - Daily TWR: `r_t = (V_t − V_{t−1} − F_t) / (V_{t−1} + max(F_t, 0))`. Inflows count at the start of the day and outflows at the end.
 - Cost basis is FIFO across brokers and includes purchase fees. A transfer between brokers is not a sale: the original lots and dates carry over. A transfer-in with no matching transfer-out is treated as a deposit of securities.
+- A security traded on several listings (NASDAQ in USD, Tradegate in EUR) is one instrument. It is priced in the currency of its most recent trade, and trade prices from the other listing are translated through EUR.
+
+### Import rules
+
+- **DEGIRO Transactions:** a 00:00 row without an order ID is read as a broker transfer. Bank-issued warrants and certificates are the exception: for them such a row is the payout at expiry or knock-out, so it is a sale. Warrants get their WKN as ticker.
+- **DEGIRO Account statement:**
+  - Not imported, because they are cash sweeps or rows already in the Transactions file: "Processed Flatex Withdrawal" reservations and releases, certificate payouts ("AUSZAHLUNG ZERTIFIKAT: Verkauf …") and trade cash.
+  - Foreign-currency dividends, taxes and fees are converted at the rate of the conversion that DEGIRO books a day or two later.
+- **IBKR Transaction History:**
+  - Trading costs are net minus gross amount, so they include stamp duties and exchange fees on top of the commission.
+  - An FX conversion is split into its commission (a fee) and its FX result.
+- **Limitation:** cash is kept in EUR per broker. If dollars from a sale are held and reinvested without being converted, the gain or loss on those dollars is not visible. IBKR books it as "FX Translations P&L"; for DEGIRO, add it as an FX adjustment.
