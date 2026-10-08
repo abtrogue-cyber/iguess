@@ -123,6 +123,18 @@
       add('Broker transfer', 'Same-day transfer out and in: shares held (not doubled)', 10, r.positions[0].qty, 0, 'num');
     }
 
+    {
+      // LIFO on a sale: bought 50 @ 21.5 (2025), 30 @ 191; selling 30 @ 215 closes the newest lot
+      const s = st([inst('L', 'EUR')], [
+        tx('2025-04-09', 'L', 'buy', 50, 21.5),
+        tx('2026-07-31', 'L', 'buy', 30, 191),
+        tx('2026-08-03', 'L', 'sell', 30, 215, 0, 1, { lotMethod: 'lifo' })
+      ], [], {});
+      const r = PT.compute(s, { asOf: '2026-08-04' });
+      add('FIFO / LIFO', 'LIFO sale realises 30 × (215 − 191)', 720, r.realized.reduce((a, b) => a + b.pnl, 0));
+      add('FIFO / LIFO', 'Cost basis kept: 50 × 21.50 (FIFO would leave 20 × 21.50 + 30 × 191)', 1075, r.positions[0].cost);
+    }
+
     /* ---------- 6b. Cross-listed security ---------- */
     {
       // priced in EUR (its Tradegate listing) but bought on NASDAQ in USD

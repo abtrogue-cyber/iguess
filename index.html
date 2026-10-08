@@ -1107,8 +1107,11 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
         const unitFee = t.qty > 0 ? t.fee / t.qty : 0;
         const closeUnit = t.price * mult / t.fxEff;
         const q0 = qNow();
-        while (rem > EPS && st.lots.length && Math.sign(st.lots[0].q) === -sign) {
-          const lot = st.lots[0];
+        // FIFO closes the oldest lot first; a trade marked LIFO (as a broker allows per sale) the newest
+        const pick = () => t.lotMethod === 'lifo' ? st.lots.length - 1 : 0;
+        while (rem > EPS && st.lots.length && Math.sign(st.lots[pick()].q) === -sign) {
+          const li = pick();
+          const lot = st.lots[li];
           const m = Math.min(rem, Math.abs(lot.q));
           const isLong = lot.q > 0;
           const gross = isLong ? m * (closeUnit - lot.uc) : m * (lot.uc - closeUnit);
@@ -1125,7 +1128,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
           if (st.trip) { st.trip.pnl += r.pnl; st.trip.gross += gross; st.trip.fees += fees; st.trip.cost += m * lot.uc + m * lot.uf; st.trip.units += m; st.trip.wdays += m * (t.d - lot.d); st.trip.pe += pe; st.trip.fe += r.fe; }
           lot.q += isLong ? -m : m;
           rem -= m;
-          if (Math.abs(lot.q) < EPS) st.lots.shift();
+          if (Math.abs(lot.q) < EPS) st.lots.splice(li, 1);
         }
         if (rem > EPS) {
           st.lots.push({ q: sign * rem, d: t.d, p: t.price, cur: t.cur, fx: t.fxEff, uc: t.price * mult / t.fxEff, uf: unitFee, mult, txId: t.id, inKind: !!(opts2 && opts2.inKind) });
@@ -2724,6 +2727,18 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
       add('Broker transfer', 'Same-day transfer out and in: shares held (not doubled)', 10, r.positions[0].qty, 0, 'num');
     }
 
+    {
+      // LIFO on a sale: bought 50 @ 21.5 (2025), 30 @ 191; selling 30 @ 215 closes the newest lot
+      const s = st([inst('L', 'EUR')], [
+        tx('2025-04-09', 'L', 'buy', 50, 21.5),
+        tx('2026-07-31', 'L', 'buy', 30, 191),
+        tx('2026-08-03', 'L', 'sell', 30, 215, 0, 1, { lotMethod: 'lifo' })
+      ], [], {});
+      const r = PT.compute(s, { asOf: '2026-08-04' });
+      add('FIFO / LIFO', 'LIFO sale realises 30 × (215 − 191)', 720, r.realized.reduce((a, b) => a + b.pnl, 0));
+      add('FIFO / LIFO', 'Cost basis kept: 50 × 21.50 (FIFO would leave 20 × 21.50 + 30 × 191)', 1075, r.positions[0].cost);
+    }
+
     /* ---------- 6b. Cross-listed security ---------- */
     {
       // priced in EUR (its Tradegate listing) but bought on NASDAQ in USD
@@ -2929,6 +2944,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
 
   /* ------------------------------------------------------ formula tips */
   App.TIPS = {
+    lots: '<b>Which lots a sale closes</b><br><b>FIFO</b> (default): the oldest purchase first — the rule German tax law applies.<br><b>LIFO</b>: the newest purchase first, as you can choose per sale at IBKR. It changes realised vs. unrealised P&amp;L and the cost basis of what you keep, not the total.',
     value: '<b>Total value</b><br><code>Σ qty × price × multiplier ÷ FX + cash</code><br>FX is quoted as local currency per 1 EUR (e.g. USD 1.16). Prices are the latest stored price on or before the valuation date.',
     invested: '<b>Net invested capital</b><br><code>deposits − withdrawals</code><br>plus securities transferred in without a matching transfer-out (valued at market). In “securities only” basis: purchases − sale proceeds − income.',
     pnl: '<b>Absolute return</b><br><code>total value − net invested</code><br><b>Simple return</b> <code>absolute return ÷ net invested</code>',
@@ -4435,6 +4451,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
         <label class="f"><span>FX rate <span class="muted">(per 1 EUR)</span></span><input type="text" inputmode="decimal" id="tf-fx" value="${t.currency === 'EUR' ? '1' : fmtIn(fx0)}"></label>
         <label class="f"><span>Fees</span><input type="text" inputmode="decimal" id="tf-fee" value="${fmtIn(t.fee)}" placeholder="0"></label>
         <label class="f"><span>Fee currency</span><select id="tf-feecur"><option value="EUR">EUR</option><option value="LOCAL">Trade currency</option></select></label>
+        <label class="f"><span>Lots closed ${tip('lots')}</span><select id="tf-lots"><option value="fifo">FIFO · oldest first</option><option value="lifo" ${t.lotMethod === 'lifo' ? 'selected' : ''}>LIFO · newest first</option></select></label>
       </div>
       <div class="form-grid hidden" style="margin-top:14px" id="tf-split-fields">
         <label class="f"><span>New shares</span><input type="text" inputmode="decimal" id="tf-rn" value="${t.ratio ? fmtIn(t.ratio) : '2'}"></label>
@@ -4485,6 +4502,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
           if (!(p >= 0)) return App.toast('Enter a price (0 for free shares).', true);
           if (!(fx > 0)) return App.toast('Enter the FX rate (units of ' + cur + ' per 1 EUR).', true);
           Object.assign(rec, { qty: q, price: p, fx, fee: Math.abs($('tf-feecur').value === 'LOCAL' ? fee / fx : fee) });
+          rec.lotMethod = $('tf-lots').value === 'lifo' ? 'lifo' : undefined;
         }
         App.commit(s => {
           if (!ex) {
@@ -4642,7 +4660,7 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
       </div>
       <div class="grid g-12"><div class="card c-12 flush"><div class="table-wrap"><table class="t compact">
       ${isTr ? `<thead><tr><th>Date</th><th>Instrument</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th class="r">FX</th><th class="r">Fees €</th><th>Broker</th><th>Source</th><th>Note</th><th></th></tr></thead><tbody>
-        ${shown.map(t => { const i = App.instById(t.instId); return `<tr><td class="nowrap">${F.date(t.date)}</td><td><a href="#/position/${t.instId}" class="tk">${esc(App.instLabel(i))}</a></td><td><span class="tag ${t.type === 'buy' ? 'accent' : ''}">${App.typeLabel(t.type)}</span></td><td class="r num">${t.type === 'split' ? '×' + F.num(t.ratio, 4) : F.qty(t.qty)}</td><td class="r num">${t.type === 'split' ? '' : F.price(t.price, t.currency)}</td><td class="r num">${t.currency === 'EUR' || t.type === 'split' ? '—' : (t.fx > 0 ? F.fx(t.fx) : '<span class="muted" data-tip="No FX on the record — taken from FX history">auto</span>')}</td><td class="r num">${t.fee ? F.eur(t.fee) : '—'}</td><td><span class="badge-broker">${esc(t.broker || '—')}</span></td><td class="xs muted">${esc(t.src || '')}</td><td class="small muted">${esc(t.note || '')}</td><td class="r nowrap"><button class="icon-btn" data-edit-tx="${t.id}" aria-label="Edit">${icon('edit')}</button><button class="icon-btn" data-del-tx="${t.id}" aria-label="Delete">${icon('trash')}</button></td></tr>`; }).join('')}</tbody>`
+        ${shown.map(t => { const i = App.instById(t.instId); return `<tr><td class="nowrap">${F.date(t.date)}</td><td><a href="#/position/${t.instId}" class="tk">${esc(App.instLabel(i))}</a></td><td><span class="tag ${t.type === 'buy' ? 'accent' : ''}">${App.typeLabel(t.type)}</span>${t.lotMethod === 'lifo' ? ' <span class="tag" data-tip="Closes the newest lots first">LIFO</span>' : ''}</td><td class="r num">${t.type === 'split' ? '×' + F.num(t.ratio, 4) : F.qty(t.qty)}</td><td class="r num">${t.type === 'split' ? '' : F.price(t.price, t.currency)}</td><td class="r num">${t.currency === 'EUR' || t.type === 'split' ? '—' : (t.fx > 0 ? F.fx(t.fx) : '<span class="muted" data-tip="No FX on the record — taken from FX history">auto</span>')}</td><td class="r num">${t.fee ? F.eur(t.fee) : '—'}</td><td><span class="badge-broker">${esc(t.broker || '—')}</span></td><td class="xs muted">${esc(t.src || '')}</td><td class="small muted">${esc(t.note || '')}</td><td class="r nowrap"><button class="icon-btn" data-edit-tx="${t.id}" aria-label="Edit">${icon('edit')}</button><button class="icon-btn" data-del-tx="${t.id}" aria-label="Delete">${icon('trash')}</button></td></tr>`; }).join('')}</tbody>`
       : `<thead><tr><th>Date</th><th>Type</th><th>Instrument</th><th class="r">Amount</th><th class="r">WHT</th><th class="r">FX</th><th>Broker</th><th>Note</th><th></th></tr></thead><tbody>
         ${shown.map(c => { const i = App.instById(c.instId); return `<tr><td class="nowrap">${F.date(c.date)}</td><td><span class="tag">${App.typeLabel(c.type)}</span></td><td>${i ? `<a class="tk" href="#/position/${i.id}">${esc(App.instLabel(i))}</a>` : ''}</td><td class="r num ${F.cls(c.amount)}">${F.price(c.amount, c.currency)}</td><td class="r num">${c.wht ? F.price(-c.wht, c.currency) : ''}</td><td class="r num">${c.currency === 'EUR' ? '—' : (c.fx > 0 ? F.fx(c.fx) : '<span class="muted">auto</span>')}</td><td><span class="badge-broker">${esc(c.broker || '—')}</span></td><td class="small muted">${esc(c.note || '')}</td><td class="r nowrap"><button class="icon-btn" data-edit-cash="${c.id}" aria-label="Edit">${icon('edit')}</button><button class="icon-btn" data-del-cash="${c.id}" aria-label="Delete">${icon('trash')}</button></td></tr>`; }).join('')}</tbody>`}
       </table></div>${rows.length > shown.length ? `<div style="padding:14px;text-align:center"><button class="btn sm" id="act-more">Show more (${rows.length - shown.length})</button></div>` : ''}${!rows.length ? '<div class="empty-state small">No records.</div>' : ''}</div></div>`;

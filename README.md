@@ -56,7 +56,7 @@ node tools/build.js   # rebuild index.html
 
 - FX rates are units of foreign currency per 1 EUR (USD 1.16), as DEGIRO and the ECB quote them.
 - Daily TWR: `r_t = (V_t − V_{t−1} − F_t) / (V_{t−1} + max(F_t, 0))`. Inflows count at the start of the day and outflows at the end.
-- Cost basis is FIFO across brokers and includes purchase fees. A transfer between brokers is not a sale: the original lots and dates carry over. A transfer-in with no matching transfer-out is treated as a deposit of securities.
+- Cost basis is FIFO across brokers and includes purchase fees. A single sale can be marked LIFO (newest lots first) in the transaction form, as IBKR lets you choose per sale; it moves P&L between realised and unrealised, not the total. A transfer between brokers is not a sale: the original lots and dates carry over. A transfer-in with no matching transfer-out is treated as a deposit of securities.
 - A security traded on several listings (NASDAQ in USD, Tradegate in EUR) is one instrument. It is priced in the currency of its most recent trade, and trade prices from the other listing are translated through EUR.
 
 ### Import rules

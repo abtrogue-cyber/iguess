@@ -136,8 +136,11 @@
         const unitFee = t.qty > 0 ? t.fee / t.qty : 0;
         const closeUnit = t.price * mult / t.fxEff;
         const q0 = qNow();
-        while (rem > EPS && st.lots.length && Math.sign(st.lots[0].q) === -sign) {
-          const lot = st.lots[0];
+        // FIFO closes the oldest lot first; a trade marked LIFO (as a broker allows per sale) the newest
+        const pick = () => t.lotMethod === 'lifo' ? st.lots.length - 1 : 0;
+        while (rem > EPS && st.lots.length && Math.sign(st.lots[pick()].q) === -sign) {
+          const li = pick();
+          const lot = st.lots[li];
           const m = Math.min(rem, Math.abs(lot.q));
           const isLong = lot.q > 0;
           const gross = isLong ? m * (closeUnit - lot.uc) : m * (lot.uc - closeUnit);
@@ -154,7 +157,7 @@
           if (st.trip) { st.trip.pnl += r.pnl; st.trip.gross += gross; st.trip.fees += fees; st.trip.cost += m * lot.uc + m * lot.uf; st.trip.units += m; st.trip.wdays += m * (t.d - lot.d); st.trip.pe += pe; st.trip.fe += r.fe; }
           lot.q += isLong ? -m : m;
           rem -= m;
-          if (Math.abs(lot.q) < EPS) st.lots.shift();
+          if (Math.abs(lot.q) < EPS) st.lots.splice(li, 1);
         }
         if (rem > EPS) {
           st.lots.push({ q: sign * rem, d: t.d, p: t.price, cur: t.cur, fx: t.fxEff, uc: t.price * mult / t.fxEff, uf: unitFee, mult, txId: t.id, inKind: !!(opts2 && opts2.inKind) });

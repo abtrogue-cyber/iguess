@@ -165,6 +165,7 @@
 
   /* ------------------------------------------------------ formula tips */
   App.TIPS = {
+    lots: '<b>Which lots a sale closes</b><br><b>FIFO</b> (default): the oldest purchase first — the rule German tax law applies.<br><b>LIFO</b>: the newest purchase first, as you can choose per sale at IBKR. It changes realised vs. unrealised P&amp;L and the cost basis of what you keep, not the total.',
     value: '<b>Total value</b><br><code>Σ qty × price × multiplier ÷ FX + cash</code><br>FX is quoted as local currency per 1 EUR (e.g. USD 1.16). Prices are the latest stored price on or before the valuation date.',
     invested: '<b>Net invested capital</b><br><code>deposits − withdrawals</code><br>plus securities transferred in without a matching transfer-out (valued at market). In “securities only” basis: purchases − sale proceeds − income.',
     pnl: '<b>Absolute return</b><br><code>total value − net invested</code><br><b>Simple return</b> <code>absolute return ÷ net invested</code>',
