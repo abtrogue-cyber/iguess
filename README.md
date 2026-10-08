@@ -11,6 +11,22 @@ A single, self-contained web app (`index.html`) for a concentrated multi-currenc
 - **Views**: Dashboard, Positions, Position detail, Allocation (position/theme tag/sector/currency/country/broker), Performance (heatmap, drawdown, rolling 12M), Closed positions (win rate, holding period, best/worst, per-year table), Activity, Data & prices, Checks, Settings.
 - **Backup**: JSON export and restore, plus a trades CSV.
 
+## Design
+
+An "instrument panel" look rather than a dashboard template:
+
+- **Type:** Archivo, a variable-width grotesk: expanded for titles, condensed for the big figures. Geist Mono is used for every figure, label and table column, so all numbers are tabular.
+- **Colour:** near-black with a faint dot grid, film grain and slow ambient light. The light behind the hero tints green or red with the day's move. Cyan is the single accent (deep cyan on the "paper" light theme). Green and red appear only for gains and losses; the colour-blind option swaps them for blue and orange.
+- **Layout:** seamless hairline panel grids with HUD corner brackets, a cursor spotlight on panels and staggered load-in.
+- **Interaction:**
+  - Hover or drag the hero chart to scrub through time; the net asset value and P&L update to that date.
+  - Charts have TradingView-style crosshairs with axis tags and direct end labels.
+  - The portfolio and exposure heat-maps are squarified treemaps, coloured by P&L % or the last price move.
+  - Odometer digits roll in on load.
+  - A ticker tape shows the latest stored prices.
+  - A command palette (Ctrl/⌘ K or `/`) jumps to positions, views and actions.
+  - On phones a bottom tab bar replaces the top navigation.
+
 ## Development
 
 The source is in `src/`. `tools/build.js` inlines it into `index.html`.

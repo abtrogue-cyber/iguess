@@ -2,37 +2,44 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Conviction Portfolio Tracker</title>
 <meta name="description" content="Private portfolio performance tracker — TWR, XIRR, FIFO P&L, currency attribution, risk and benchmarks. Runs entirely in your browser.">
 <meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#04060a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Geist+Mono:wght@400..700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
 <style>
 /*__CSS__*/
 </style>
 </head>
-<body>
-<div id="app">
-  <aside class="sidebar">
-    <div class="brand"><div class="brand-mark" id="brand-mark"></div><div><div class="brand-name">Conviction</div><div class="brand-sub">Portfolio analytics</div></div></div>
-    <nav class="nav" id="nav" aria-label="Main"></nav>
-    <div class="sidebar-foot">
-      <div class="seg full" id="theme-seg" aria-label="Theme"></div>
-      <div class="seg full" id="loc-seg" aria-label="Number format"></div>
-    </div>
-  </aside>
-  <main>
-    <header class="topbar">
-      <div><h1 id="page-title">Dashboard</h1><div class="sub" id="page-sub"></div></div>
-      <div class="actions" id="page-actions"></div>
-    </header>
-    <div id="banner"></div>
-    <section id="view" aria-live="polite"></section>
-  </main>
-</div>
+<body data-mood="flat">
+<div class="ambient" aria-hidden="true"><i class="a1"></i><i class="a2"></i></div>
+<header class="topbar">
+  <a class="logo" href="#/dashboard" aria-label="Conviction — dashboard"><span class="mark"></span><span class="word">CONVICTION</span></a>
+  <nav class="nav" id="nav" aria-label="Main"></nav>
+  <div class="tb-right">
+    <button class="kbar" id="kbar" type="button" aria-label="Search and commands"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span class="t">Search</span><kbd id="kbar-key">Ctrl K</kbd></button>
+    <button class="status" id="price-status" type="button"></button>
+    <div class="seg" id="theme-seg" aria-label="Theme"></div>
+    <div class="seg" id="loc-seg" aria-label="Number format"></div>
+    <button class="btn primary" type="button" data-act="add-trade" id="tb-add"></button>
+  </div>
+</header>
+<div class="tape" id="tape" aria-label="Holdings ticker"></div>
+<main>
+  <div class="page-head">
+    <div><div class="idx" id="page-idx"></div><h1 id="page-title">Dashboard</h1></div>
+    <div class="page-meta" id="page-sub"></div>
+    <div class="actions" id="page-actions"></div>
+  </div>
+  <div id="banner"></div>
+  <section id="view" aria-live="polite"></section>
+</main>
+<nav class="tabbar" id="tabbar" aria-label="Main (mobile)"></nav>
+<div id="palette-root"></div>
 <div id="modal-root"></div>
 <div id="toast-root" aria-live="polite"></div>
 <div id="tip" role="tooltip"></div>

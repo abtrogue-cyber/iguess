@@ -23,7 +23,7 @@
     const tickers = App.state.instruments.map(i => `<option value="${esc(i.ticker)}">${esc(i.name || '')}</option>`).join('');
     const fx0 = t.fx > 0 ? t.fx : latestFx(t.currency, t.date);
     App.modal(`
-      <h2>${editing ? 'Edit transaction' : 'Add transaction'}</h2>
+      <div class="label" style="margin-bottom:10px">Ledger · trade</div><h2>${editing ? 'Edit transaction' : 'New transaction'}</h2>
       <p class="small muted" style="margin:0 0 16px">Prices in the security’s currency. FX = units of that currency per 1 EUR (e.g. USD 1,16).</p>
       <div class="form-grid">
         <label class="f"><span>Date</span><input type="date" id="tf-date" value="${t.date}"></label>
@@ -120,7 +120,7 @@
     const x = c || { date: PT.todayISO(), type: presetType || 'deposit', amount: '', currency: 'EUR', fx: null, instId: '', wht: '', broker: 'IBKR', note: '' };
     const insts = App.state.instruments.filter(i => i.type !== 'option').sort((a, b) => a.ticker.localeCompare(b.ticker));
     App.modal(`
-      <h2>${editing ? 'Edit cash movement' : 'Add cash movement'}</h2>
+      <div class="label" style="margin-bottom:10px">Ledger · cash</div><h2>${editing ? 'Edit cash movement' : 'New cash movement'}</h2>
       <p class="small muted" style="margin:0 0 16px">Deposits and withdrawals are external flows (they drive TWR/XIRR). Dividends, interest and fees are income/costs.</p>
       <div class="form-grid">
         <label class="f"><span>Date</span><input type="date" id="cf-date" value="${x.date}"></label>
@@ -167,7 +167,7 @@
     const others = App.state.instruments.filter(i => i.id !== inst.id).sort((a, b) => a.ticker.localeCompare(b.ticker));
     const used = App.state.transactions.some(t => t.instId === inst.id) || App.state.cash.some(c => c.instId === inst.id);
     App.modal(`
-      <h2>Edit instrument</h2>
+      <div class="label" style="margin-bottom:10px">Instrument</div><h2>${esc(App.instLabel(inst))}</h2>
       <p class="small muted" style="margin:0 0 16px">Imported names are linked across brokers by ISIN, broker symbol or name. Aliases: ${(inst.aliases || []).map(esc).join(', ') || '—'}</p>
       <div class="form-grid">
         <label class="f"><span>Ticker</span><input type="text" id="if-ticker" value="${esc(inst.ticker)}"></label>
@@ -206,7 +206,7 @@
   };
 
   App.quickPriceForm = function (inst) {
-    App.modal(`<h2>Add price · ${esc(App.instLabel(inst))}</h2><p class="small muted">Stored as a price observation. The newest observation on or before the valuation date is used.</p>
+    App.modal(`<div class="label" style="margin-bottom:10px">Price observation</div><h2>${esc(App.instLabel(inst))}</h2><p class="small muted">Stored as a price observation. The newest observation on or before the valuation date is used.</p>
       <div class="form-grid" style="margin-top:12px"><label class="f"><span>Date</span><input type="date" id="qp-d" value="${PT.todayISO()}"></label><label class="f"><span>Price (${esc(inst.currency)})</span><input type="text" inputmode="decimal" id="qp-p"></label></div>
       <div class="foot"><button class="btn" data-close>Cancel</button><button class="btn primary" id="qp-save">Save price</button></div>`, m => {
       m.querySelector('#qp-save').addEventListener('click', () => {
@@ -251,12 +251,12 @@
         ${rows.length && (q || ui.actType) ? `<button class="btn sm danger" id="act-delall">Delete ${rows.length} filtered</button>` : ''}
         <button class="btn" data-act="add-cash">${icon('plus')}Cash movement</button><button class="btn primary" data-act="add-trade">${icon('plus')}Trade</button>
       </div>
-      <div class="card flush"><div class="table-wrap"><table class="t compact">
+      <div class="grid g-12"><div class="card c-12 flush"><div class="table-wrap"><table class="t compact">
       ${isTr ? `<thead><tr><th>Date</th><th>Instrument</th><th>Type</th><th class="r">Qty</th><th class="r">Price</th><th class="r">FX</th><th class="r">Fees €</th><th>Broker</th><th>Source</th><th>Note</th><th></th></tr></thead><tbody>
         ${shown.map(t => { const i = App.instById(t.instId); return `<tr><td class="nowrap">${F.date(t.date)}</td><td><a href="#/position/${t.instId}" class="tk">${esc(App.instLabel(i))}</a></td><td><span class="tag ${t.type === 'buy' ? 'accent' : ''}">${App.typeLabel(t.type)}</span></td><td class="r num">${t.type === 'split' ? '×' + F.num(t.ratio, 4) : F.qty(t.qty)}</td><td class="r num">${t.type === 'split' ? '' : F.price(t.price, t.currency)}</td><td class="r num">${t.currency === 'EUR' || t.type === 'split' ? '—' : (t.fx > 0 ? F.fx(t.fx) : '<span class="muted" data-tip="No FX on the record — taken from FX history">auto</span>')}</td><td class="r num">${t.fee ? F.eur(t.fee) : '—'}</td><td><span class="badge-broker">${esc(t.broker || '—')}</span></td><td class="xs muted">${esc(t.src || '')}</td><td class="small muted">${esc(t.note || '')}</td><td class="r nowrap"><button class="icon-btn" data-edit-tx="${t.id}" aria-label="Edit">${icon('edit')}</button><button class="icon-btn" data-del-tx="${t.id}" aria-label="Delete">${icon('trash')}</button></td></tr>`; }).join('')}</tbody>`
       : `<thead><tr><th>Date</th><th>Type</th><th>Instrument</th><th class="r">Amount</th><th class="r">WHT</th><th class="r">FX</th><th>Broker</th><th>Note</th><th></th></tr></thead><tbody>
         ${shown.map(c => { const i = App.instById(c.instId); return `<tr><td class="nowrap">${F.date(c.date)}</td><td><span class="tag">${App.typeLabel(c.type)}</span></td><td>${i ? `<a class="tk" href="#/position/${i.id}">${esc(App.instLabel(i))}</a>` : ''}</td><td class="r num ${F.cls(c.amount)}">${F.price(c.amount, c.currency)}</td><td class="r num">${c.wht ? F.price(-c.wht, c.currency) : ''}</td><td class="r num">${c.currency === 'EUR' ? '—' : (c.fx > 0 ? F.fx(c.fx) : '<span class="muted">auto</span>')}</td><td><span class="badge-broker">${esc(c.broker || '—')}</span></td><td class="small muted">${esc(c.note || '')}</td><td class="r nowrap"><button class="icon-btn" data-edit-cash="${c.id}" aria-label="Edit">${icon('edit')}</button><button class="icon-btn" data-del-cash="${c.id}" aria-label="Delete">${icon('trash')}</button></td></tr>`; }).join('')}</tbody>`}
-      </table></div>${rows.length > shown.length ? `<div style="padding:14px;text-align:center"><button class="btn sm" id="act-more">Show more (${rows.length - shown.length})</button></div>` : ''}${!rows.length ? '<div class="empty-state small">No records.</div>' : ''}</div>`;
+      </table></div>${rows.length > shown.length ? `<div style="padding:14px;text-align:center"><button class="btn sm" id="act-more">Show more (${rows.length - shown.length})</button></div>` : ''}${!rows.length ? '<div class="empty-state small">No records.</div>' : ''}</div></div>`;
     return {
       title: 'Activity', html,
       mount(root) {
@@ -279,9 +279,10 @@
     const tab = DATA_TABS.find(t => t[0] === ui.dataTab) ? ui.dataTab : 'import';
     const body = { import: importTab, prices: pricesTab, fx: fxTab, bench: benchTab, instruments: instrumentsTab, backup: backupTab }[tab]();
     return {
-      title: 'Data & prices', sub: 'Everything is stored locally in this browser. Export a JSON backup regularly.',
+      title: 'Data & prices', sub: 'Stored locally in this browser · export a JSON backup regularly', actions: `<button class="btn" id="dh-backup">${icon('download')}Backup</button>`,
       html: `<div class="tabs">${DATA_TABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-dtab="${k}">${l}</button>`).join('')}</div>${body.html}`,
       mount(root) {
+        const bk = document.getElementById('dh-backup'); if (bk) bk.addEventListener('click', () => App.exportBackup());
         root.querySelectorAll('[data-dtab]').forEach(b => b.addEventListener('click', () => { ui.dataTab = b.dataset.dtab; App.render(); }));
         body.mount && body.mount(root);
       }
@@ -663,7 +664,7 @@
     const html = `
       <div class="explain" style="margin-bottom:18px"><b>How this is verified.</b> Each case below builds a tiny portfolio, runs it through the same engine that powers every screen, and compares the result with numbers worked out by hand (formula shown on each row). <b class="${ok === tests.length ? 'gain' : 'loss'}">${ok}/${tests.length} passed.</b></div>
       <div class="grid g-12">
-        ${groups.map(g => `<div class="card c-6 flush"><div class="card-h"><h2>${esc(g)}</h2></div><div class="table-wrap"><table class="t compact"><thead><tr><th>Check</th><th class="r">By hand</th><th class="r">Engine</th><th></th></tr></thead><tbody>
+        ${groups.map((g, gi) => `<div class="card ${groups.length % 2 && gi === groups.length - 1 ? 'c-12' : 'c-6'} flush"><div class="card-h"><h2>${esc(g)}</h2></div><div class="table-wrap"><table class="t compact"><thead><tr><th>Check</th><th class="r">By hand</th><th class="r">Engine</th><th></th></tr></thead><tbody>
           ${tests.filter(t => t.group === g).map(t => `<tr><td class="small">${esc(t.label)}${t.note ? `<div class="xs muted">${esc(t.note)}</div>` : ''}</td><td class="r num">${fmtv(t.hand, t.fmt)}</td><td class="r num">${fmtv(t.engine, t.fmt)}</td><td class="r">${t.ok ? '<span class="pill-ok">✓</span>' : '<span class="pill-bad">✗</span>'}</td></tr>`).join('')}
         </tbody></table></div></div>`).join('')}
         <div class="card c-12"><div class="card-h"><h2>Worked example: TWR vs. XIRR</h2></div><div class="small text-2" style="line-height:1.75">

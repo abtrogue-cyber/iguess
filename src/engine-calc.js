@@ -304,10 +304,10 @@
     if (badDays > 3) warnings.push({ level: 'warn', code: 'twr', text: `${badDays} day(s) had a non-positive starting value and were excluded from TWR chaining.` });
     if (missingFx.size) warnings.push({ level: 'error', code: 'fx', text: `No FX history for ${[...missingFx].join(', ')}.` });
 
-    /* ---------- open positions */
     // most recent day with any price/FX observation (for a meaningful “1D” when today has no prices yet)
     let lastPriceDay = start;
     Object.keys(priceSeries).forEach(id => { const ps = priceSeries[id]; if (ps.n) { const d = ps.dateAt(asOf); if (d != null && d <= asOf && d > lastPriceDay) lastPriceDay = d; } });
+    /* ---------- open positions */
     const nav = V[N - 1];
     const positions = [];
     Object.keys(instState).forEach(id => {
@@ -338,6 +338,20 @@
         }
       });
       const priced = P >= 0 && X > 0;
+      // last price move (previous observation → latest), used by the ticker tape, movers and the map
+      let dayPct = NaN, dayEUR = NaN, dayFresh = false, dayTo = null;
+      if (ps && ps.n) {
+        let k = -1;
+        for (let j = ps.n - 1; j >= 0; j--) if (ps.xs[j] <= asOf) { k = j; break; }
+        if (k >= 1 && ps.ys[k - 1] > 0) {
+          const d1 = ps.xs[k], d0 = ps.xs[k - 1];
+          const X1 = fxAt(cur, d1), X0 = fxAt(cur, d0);
+          dayPct = ps.ys[k] / ps.ys[k - 1] - 1;
+          if (X1 > 0 && X0 > 0) dayEUR = q * mult * (ps.ys[k] / X1 - ps.ys[k - 1] / X0);
+          dayFresh = lastPriceDay - d1 <= 4 && d1 - d0 <= 5;
+          dayTo = iso(d1);
+        }
+      }
       const value = priced ? q * mult * P / X : 0;
       const unreal = priced ? value - costGross - fees : NaN;
       const basisAbs = Math.abs(costGross) + fees;
@@ -351,7 +365,8 @@
         totalReturn: (priced ? unreal : 0) + realizedPnl + divs.gross - divs.tax,
         since: st.trip ? iso(st.trip.start) : iso(st.lots[0].d), holdDays: st.trip ? asOf - st.trip.start : asOf - st.lots[0].d,
         avgAge: absQ ? wAge / absQ : 0, lots: st.lots.map(l => Object.assign({}, l, { date: iso(l.d) })),
-        weight: 0, broker: st.broker, zeroCost: Math.abs(costGross) < EPS, expiry: inst.expiry || null
+        weight: 0, broker: st.broker, zeroCost: Math.abs(costGross) < EPS, expiry: inst.expiry || null,
+        dayPct, dayEUR, dayFresh, dayTo
       });
     });
     const grossLong = positions.reduce((s, p) => s + Math.max(0, p.value), 0);
