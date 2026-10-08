@@ -28,6 +28,19 @@
     return { format, label, protos: {}, trades: [], cash: [], skipped: {}, warnings: [], notes: [] };
   }
   const skip = (R, reason) => { R.skipped[reason] = (R.skipped[reason] || 0) + 1; };
+  /** DEGIRO wraps a long product name or description into an extra row holding only the overflow text. */
+  function mergeContinuations(body, dateCol) {
+    const out = [];
+    body.forEach(r => {
+      if (!String(r[dateCol] || '').trim() && out.length && r.some(x => String(x || '').trim())) {
+        const prev = out[out.length - 1];
+        r.forEach((x, i) => { const t = String(x || '').trim(); if (t) prev[i] = (String(prev[i] || '').trim() + ' ' + t).trim(); });
+        return;
+      }
+      out.push(r.slice());
+    });
+    return out;
+  }
 
   /* ---------------------------------------------------------- detection */
   PT.detectFormat = function (rows) {
@@ -110,7 +123,7 @@
     if (c.date < 0 || c.qty < 0 || c.price < 0 || c.isin < 0) { R.warnings.push('Could not find the DEGIRO columns — use manual mapping.'); R.needsMapping = true; return R; }
     const zero = {};
     const parsed = [];
-    body.forEach((r, idx) => {
+    mergeContinuations(body, c.date).forEach((r, idx) => {
       const date = parseDate(r[c.date], 'DMY');
       if (!date) { skip(R, 'Unreadable date'); return; }
       const qty = parseNum(r[c.qty], dec);
@@ -192,14 +205,15 @@
     const R = result('degiro-account', PT.FORMAT_LABELS['degiro-account']);
     const hi = PT.findHeaderRow(rows);
     const H = rows[hi].map(x => String(x || '').trim());
-    const body = rows.slice(hi + 1);
-    const dec = opts.decimal || detectDecimal(body.flatMap(r => r.slice(6)));
+    const rawBody = rows.slice(hi + 1);
+    const dec = opts.decimal || detectDecimal(rawBody.flatMap(r => r.slice(6)));
     const c = {
       date: findCol(H, /^(date|datum)$/i), vdate: findCol(H, /value date|valutadatum/i), product: findCol(H, /^(product|produkt)$/i),
       isin: findCol(H, /^isin$/i), desc: findCol(H, /description|beschreibung|omschrijving/i), fx: findCol(H, /^fx$/i),
       change: findCol(H, /^(change|änderung|mutatie|anderung)$/i), order: findCol(H, /order/i)
     };
     if (c.date < 0 || c.desc < 0 || c.change < 0) { R.warnings.push('Could not find the DEGIRO account columns.'); R.needsMapping = true; return R; }
+    const body = mergeContinuations(rawBody, c.date);
     const unknown = new Set();
     // Foreign-currency dividends, taxes and fees are converted to EUR a day or two later; the
     // conversion leg in that currency carries the rate actually applied.

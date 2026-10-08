@@ -21,6 +21,7 @@ module.exports = function (PT) {
   check('Bank warrant → type warrant, ticker = WKN', wp && wp.type === 'warrant' && wp.ticker === 'PX0AAA', wp && wp.type + ' ' + wp.ticker);
   const payout = R.trades.find(t => t.key === 'ISIN:DE000PX0AAA1' && t.date === '2026-03-20');
   check('Warrant payout at 00:00 without order ID is a sale, not a transfer', payout && payout.type === 'sell', payout && payout.type);
+  check('Product name wrapped into an extra row is joined back', R.protos['ISIN:DE000PX0BBB2'].name === 'BNP ACME ROBOTICS CALL STR 350 R 0.100 18/12/2026' && !R.skipped['Unreadable date'], R.protos['ISIN:DE000PX0BBB2'].name + ' ' + JSON.stringify(R.skipped));
   check('Structured-product names', PT.isStructuredProduct('BNP PAR.EHG CALL26 ACM ACME CORP. STR 300 R 10') && PT.isStructuredProduct('SG ACME INC TURBO UNLIMITED MINI CALL BAR 80') && !PT.isStructuredProduct('CALLAWAY GOLF CO') && !PT.isStructuredProduct('PUTNAM INVESTMENTS') && !PT.isStructuredProduct('TURBO ENERGY S.A.'));
 
   let s = PT.emptyState();
