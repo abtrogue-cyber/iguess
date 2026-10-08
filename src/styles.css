@@ -526,10 +526,19 @@ details > summary { cursor: pointer; color: var(--text-2); font-family: var(--mo
 .tabbar { display: none; }
 
 /* ============================================================ responsive */
-@media (max-width: 1380px) { .kbar .t { display: none; } }
-@media (max-width: 1260px) {
-  .status .t { display: none; }
+/* the top bar gives up its extras step by step so that every section stays in view down to the tab-bar layout */
+@media (max-width: 1600px) { .kbar .t { display: none; } }
+@media (max-width: 1520px) { .nav a.nav-icon span { display: none; } .nav a.nav-icon svg { display: block; width: 16px; height: 16px; } }
+@media (max-width: 1440px) { .status:not(.live) .t, #loc-seg { display: none; } }
+@media (max-width: 1360px) {
+  #theme-seg { display: none; }
   .nav a { padding: 0 8px; } .nav a.active::after { left: 8px; right: 8px; }
+}
+@media (max-width: 1220px) {
+  .topbar { gap: 18px; padding: 0 20px; }
+  .nav a { padding: 0 7px; letter-spacing: 0.08em; } .nav a.active::after { left: 7px; right: 7px; }
+  .kbar kbd, .status .t { display: none; } .kbar { padding: 0 9px; }
+  .tb-right .btn.primary .t { display: none; } .tb-right .btn.primary { width: 34px; padding: 0; justify-content: center; }
 }
 @media (max-width: 1180px) {
   .c-8, .c-7, .c-6, .c-5, .c-4 { grid-column: span 12; }

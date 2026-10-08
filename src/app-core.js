@@ -579,7 +579,7 @@
   };
   App.NAV = NAV;
   function renderShell() {
-    document.getElementById('nav').innerHTML = NAV.map(n => `<a href="#/${n[0]}" data-route="${n[0]}">${App.icon(n[0])}<span>${n[1]}</span></a>`).join('') + `<a href="#/settings" data-route="settings">${App.icon('settings')}<span>Settings</span></a>`;
+    document.getElementById('nav').innerHTML = NAV.map(n => `<a href="#/${n[0]}" data-route="${n[0]}">${App.icon(n[0])}<span>${n[1]}</span></a>`).join('') + `<a href="#/settings" data-route="settings" class="nav-icon" title="Settings">${App.icon('settings')}<span>Settings</span></a>`;
     document.getElementById('tabbar').innerHTML = [['dashboard', 'Overview'], ['positions', 'Positions'], ['performance', 'Returns'], ['allocation', 'Exposure']]
       .map(n => `<a href="#/${n[0]}" data-route="${n[0]}">${App.icon(n[0])}<span>${n[1]}</span></a>`).join('') + `<button type="button" id="tab-more">${App.icon('more')}<span>More</span></button>`;
     document.getElementById('tab-more').addEventListener('click', () => App.palette());
