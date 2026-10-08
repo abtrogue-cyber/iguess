@@ -1,0 +1,4 @@
+"ClientAccountID","CurrencyPrimary","FXRateToBase","AssetClass","Symbol","Description","ISIN","ListingExchange","Multiplier","TradeDate","Quantity","TradePrice","IBCommission","IBCommissionCurrency","Buy/Sell"
+"U0000000","USD","0.8612","STK","ACME","ACME ROBOTICS INC","US0000000001","NASDAQ","1","20260105","50","150","-1","USD","BUY"
+"U0000000","SEK","0.0887","STK","SIVE","SIVERS SEMICONDUCTORS AB","SE0000000003","SFB","1","20260722","1500","36.10","-4.43","SEK","BUY"
+"U0000000","USD","0.8612","CASH","EUR.USD","EUR.USD","","IDEALFX","1","20260105","7000","1.16","-1.7","EUR","BUY"

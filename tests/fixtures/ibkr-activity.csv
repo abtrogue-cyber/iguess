@@ -1,0 +1,23 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,BrokerName,Interactive Brokers
+Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,C. Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+Trades,Data,Order,Stocks,USD,ACME,"2025-01-06, 10:31:02",50,150,151,-7500,-1,7501,0,50,O
+Trades,Data,Order,Stocks,USD,ACME,"2025-03-03, 11:00:00",-20,180,180,3600,-1,-3000.4,598.6,0,C
+Trades,Data,SubTotal,Stocks,USD,ACME,,30,,,,,,,,
+Trades,Data,Order,Equity and Index Options,USD,ACME 21MAR25 140 P,"2025-01-10, 10:00:00",-1,4.5,4.5,450,-0.7,-449.3,0,0,O
+Trades,Data,Order,Forex,EUR,EUR.USD,"2025-01-06, 10:30:00","7,200",1.04,,-7488,-2,,,,
+Total,Data,,,,,,,,,,,,,,
+Dividends,Header,Currency,Date,Description,Amount
+Dividends,Data,USD,2025-02-14,ACME(US0000000001) Cash Dividend USD 0.40 per Share (Ordinary Dividend),20
+Dividends,Data,Total,,,20
+Withholding Tax,Header,Currency,Date,Description,Amount,Code
+Withholding Tax,Data,USD,2025-02-14,ACME(US0000000001) Cash Dividend USD 0.40 per Share - US Tax,-3,
+Deposits & Withdrawals,Header,Currency,Settle Date,Description,Amount
+Deposits & Withdrawals,Data,EUR,2025-01-03,Electronic Fund Transfer,8000
+Deposits & Withdrawals,Data,Total,,,8000
+Interest,Header,Currency,Date,Description,Amount
+Interest,Data,EUR,2025-02-04,EUR Credit Interest for Jan-2025,1.23
+Corporate Actions,Header,Asset Category,Currency,Report Date,Date/Time,Description,Quantity,Proceeds,Value,Realized P/L,Code
+Corporate Actions,Data,Stocks,USD,2025-06-10,"2025-06-09, 20:25:00","ACME(US0000000001) Split 2 for 1 (ACME, ACME ROBOTICS INC, US0000000001)",30,0,0,0,
+Financial Instrument Information,Header,Asset Category,Symbol,Description,Conid,Security ID,Underlying,Listing Exch,Multiplier,Type,Code
+Financial Instrument Information,Data,Stocks,ACME,ACME ROBOTICS INC,123456,US0000000001,ACME,NASDAQ,1,COMMON,

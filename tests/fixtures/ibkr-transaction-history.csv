@@ -1,0 +1,18 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,Title,Transaction History
+Summary,Header,Base Currency,Starting Cash,Change,Ending Cash
+Summary,Data,EUR,0.00,100.00,100.00
+Transaction History,Header,Date,Account,Description,Transaction Type,Symbol,Quantity,Price,Price Currency,Gross Amount ,Commission,Net Amount
+Transaction History,Data,2026-10-07,U***00000,QQQ 20NOV26 720 P,Sell,QQQ 261120P00720000,-3,8.03,USD,"2,072.82",-1.89,"2,070.93"
+Transaction History,Data,2026-10-06,U***00000,Disbursement Initiated by Account Holder,Withdrawal,-,-,-,-,"-1,000.00",-,"-1,000.00"
+Transaction History,Data,2026-10-06,U***00000,QQQ 20NOV26 720 P,Buy,QQQ 261120P00720000,3,7.44,USD,"-1,920.79",-1.86,"-1,922.65"
+Transaction History,Data,2026-10-05,U***00000,KRW Debit Interest for Sep-2026,Debit Interest,-,-,-,-,-45.17,-,-45.17
+Transaction History,Data,2026-10-02,U***00000,OPRA NP L1 for Oct 2026,Other Fee,-,-,-,-,-1.32,-,-1.32
+Transaction History,Data,2026-09-30,U***00000,000660.KS(KR7000660001) Cash Dividend KRW 375 per Share (Ordinary Dividend),Dividend,000660.KS,-,-,-,2.44,-,2.44
+Transaction History,Data,2026-09-30,U***00000,000660.KS(KR7000660001) Cash Dividend KRW 375 per Share - KR Tax,Foreign Tax Withholding,000660.KS,-,-,-,-0.54,-,-0.54
+Transaction History,Data,2026-09-28,U***00000,SK HYNIX INC,Sell,000660.KS,-10,"1,819,000.00",KRW,"11,763.29",-7.06,"11,732.71"
+Transaction History,Data,2026-09-24,U***00000,Electronic Fund Transfer,Deposit,-,-,-,-,"2,500.00",-,"2,500.00"
+Transaction History,Data,2026-09-21,U***00000,Net Amount in Base from Forex Trade: 65.41 EUR.SEK,Forex Trade Component,EUR.SEK,65.41,11.28,SEK,-1.75,-1.74,-1.75
+Transaction History,Data,2026-07-31,U***00000,SK HYNIX INC,Buy,000660.KS,14,"1,655,000.00",KRW,"-14,946.35",-9.01,"-14,955.36"
+Transaction History,Data,2026-07-29,U***00000,Electronic Fund Transfer,Deposit,-,-,-,-,"15,000.00",-,"15,000.00"
+Transaction History,Data,2026-07-14,U***00000,FX Translations P&L,Adjustment,-,-,-,-,-12.40,-,-12.40

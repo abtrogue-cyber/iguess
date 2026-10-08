@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conviction Portfolio Tracker</title>
+<meta name="description" content="Private portfolio performance tracker — TWR, XIRR, FIFO P&L, currency attribution, risk and benchmarks. Runs entirely in your browser.">
+<meta name="color-scheme" content="dark light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark" id="brand-mark"></div><div><div class="brand-name">Conviction</div><div class="brand-sub">Portfolio analytics</div></div></div>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <div class="sidebar-foot">
+      <div class="seg full" id="theme-seg" aria-label="Theme"></div>
+      <div class="seg full" id="loc-seg" aria-label="Number format"></div>
+    </div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div><h1 id="page-title">Dashboard</h1><div class="sub" id="page-sub"></div></div>
+      <div class="actions" id="page-actions"></div>
+    </header>
+    <div id="banner"></div>
+    <section id="view" aria-live="polite"></section>
+  </main>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<div id="tip" role="tooltip"></div>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>
