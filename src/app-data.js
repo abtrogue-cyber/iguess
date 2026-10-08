@@ -423,10 +423,12 @@
     const list = s.instruments.filter(i => ui.priceAll || openIds.has(i.id)).sort((a, b) => (openIds.has(b.id) - openIds.has(a.id)) || App.instLabel(a).localeCompare(App.instLabel(b)));
     const lastStored = id => { const a = s.prices[id] || []; return a.length ? a[a.length - 1] : null; };
     const lastTx = id => { const t = s.transactions.filter(x => x.instId === id && x.price > 0).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return t; };
+    const live = App.live.card();
     const html = `
       <div class="grid g-12">
+        ${live.html}
         <div class="card c-8 flush">
-          <div class="card-h"><h2>Update prices</h2><span class="sub">enter today’s prices by hand — nothing is fetched automatically</span>
+          <div class="card-h"><h2>Update prices</h2><span class="sub">by hand — for anything live prices don’t cover</span>
             <div class="right"><label class="small text-2">Price date <input type="date" id="pr-date" value="${PT.todayISO()}"></label><label class="check small"><input type="checkbox" id="pr-all" ${ui.priceAll ? 'checked' : ''}> All instruments</label></div></div>
           <div class="table-wrap"><table class="t compact"><thead><tr><th>Instrument</th><th>Ccy</th><th class="r">Last stored</th><th class="r">Last trade</th><th class="r" style="width:160px">New price</th></tr></thead><tbody>
           ${list.map(i => { const ls = lastStored(i.id), lt = lastTx(i.id); const expired = i.expiry && i.expiry < (r.asOfISO || PT.todayISO()); return `<tr><td><span class="tk">${esc(App.instLabel(i))}</span>${expired ? ' <span class="tag">expired</span>' : ''}<div class="nm">${esc(i.type === 'option' ? i.ticker : i.name)}</div></td><td class="muted">${esc(i.currency)}</td>
@@ -452,6 +454,7 @@
       </div>`;
     return {
       html, mount(root) {
+        live.mount(root);
         root.querySelector('#pr-all').addEventListener('change', e => { ui.priceAll = e.target.checked; App.render(); });
         root.querySelector('#pr-save').addEventListener('click', () => {
           const d = root.querySelector('#pr-date').value || PT.todayISO();

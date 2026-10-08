@@ -52,12 +52,13 @@
 
     /* ---------- FX series (stored table + every rate seen on a transaction) */
     const fxObs = {};
-    const addFx = (c, d, r) => { if (!c || c === 'EUR' || !(r > 0)) return; (fxObs[c] = fxObs[c] || []).push([d, +r]); };
-    Object.keys(state.fx || {}).forEach(c => (state.fx[c] || []).forEach(o => addFx(c, dn(o[0]), o[1])));
+    const addFx = (c, d, r, stored) => { if (!c || c === 'EUR' || !(r > 0)) return; (fxObs[c] = fxObs[c] || []).push([d, +r, stored ? 1 : 0]); };
+    Object.keys(state.fx || {}).forEach(c => (state.fx[c] || []).forEach(o => addFx(c, dn(o[0]), o[1], true)));
     (state.transactions || []).forEach(t => { if (t.fx > 0 && t.currency && t.currency !== 'EUR') addFx(t.currency, dn(t.date), t.fx); });
     (state.cash || []).forEach(c => { if (c.fx > 0 && c.currency !== 'EUR') addFx(c.currency, dn(c.date), c.fx); });
     const fxSeries = {};
-    Object.keys(fxObs).forEach(c => { fxSeries[c] = PT.makeSeries(fxObs[c], gap); });
+    // like prices, a stored rate (yours or the ECB's) wins over one derived from a trade on the same day
+    Object.keys(fxObs).forEach(c => { fxSeries[c] = PT.makeSeries(fxObs[c].sort((a, b) => a[0] - b[0] || a[2] - b[2]), gap); });
     const missingFx = new Set();
     const fxAt = (c, d) => {
       if (!c || c === 'EUR') return 1;

@@ -132,6 +132,14 @@
       const r = PT.compute(s, { asOf: '2025-01-03' });
       add('Cross-listing', 'Value from the USD trade price: 10 × 100 $ ÷ 1,10', 909.09, r.positions[0].value, 0.01);
     }
+    {
+      // a stored rate for the trade day (1,25) values the position; the trade keeps its own rate (1,10) for cost
+      const s = st([inst('FXS', 'USD')], [
+        tx('2025-01-02', 'FXS', 'buy', 10, 100, 0, 1.1, { currency: 'USD' })
+      ], [], {}, { USD: [['2025-01-02', 1.25]] });
+      const r = PT.compute(s, { asOf: '2025-01-02' });
+      add('Cross-listing', 'Stored FX rate wins over the same-day trade rate: 10 × 100 $ ÷ 1,25', 800, r.positions[0].value, 0.01);
+    }
 
     /* ---------- 7. Attribution reconciles ---------- */
     {

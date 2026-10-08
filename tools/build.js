@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, 'src', f), 'utf8');
-const js = ['engine-core.js', 'engine-calc.js', 'engine-import.js', 'engine-demo.js', 'engine-tests.js', 'app-core.js', 'app-views.js', 'app-data.js']
+const js = ['engine-core.js', 'engine-calc.js', 'engine-import.js', 'engine-live.js', 'engine-demo.js', 'engine-tests.js', 'app-core.js', 'app-views.js', 'app-data.js', 'app-live.js']
   .map(f => `/* ---- ${f} ---- */\n` + read(f)).join('\n') + '\nwindow.addEventListener("DOMContentLoaded", function () { App.boot(); });\n';
 if (/<\/script/i.test(js)) throw new Error('JS contains </script>');
 const html = read('index.template.html').replace('/*__CSS__*/', () => read('styles.css')).replace('/*__JS__*/', () => js);

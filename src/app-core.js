@@ -616,11 +616,11 @@
     const items = r && !r.empty ? r.positions.filter(p => !p.missingPrice).sort((a, b) => b.weight - a.weight) : [];
     if (!items.length) { el.style.display = 'none'; el._sig = null; return; }
     el.style.display = '';
-    const sig = items.map(p => p.id + ':' + p.price + ':' + (p.dayFresh ? p.dayPct.toFixed(5) : '')).join('|') + App.state.settings.locale;
+    const sig = items.map(p => p.id + ':' + p.price + ':' + (p.dayFresh ? p.dayPct.toFixed(5) : '')).join('|') + App.state.settings.locale + ((App.live && App.live.tapeLabel()) || '');
     if (el._sig === sig) return;
     el._sig = sig;
     const one = items.map(p => `<a href="#/position/${p.id}"><b>${esc(App.instLabel(p.inst))}</b><span>${F.price(p.price, p.currency)}</span>${p.dayFresh && isFinite(p.dayPct) ? `<span class="${F.cls(p.dayPct)}">${F.arrow(p.dayPct)} ${F.pct(p.dayPct)}</span>` : '<span class="muted">·</span>'}</a>`).join('');
-    const lbl = `<span class="lbl"><span class="pulse"></span>LAST · ${F.date(PT.iso(r.lastPriceDay), 'dm')}</span>`;
+    const lbl = (App.live && App.live.tapeLabel()) || `<span class="lbl"><span class="pulse"></span>LAST · ${F.date(PT.iso(r.lastPriceDay), 'dm')}</span>`;
     const reps = Math.max(1, Math.ceil(2200 / Math.max(1, items.length * 180)));
     const copy = (lbl + one).repeat(reps);
     el.innerHTML = `<div class="tape-track" style="--tape-dur:${Math.max(40, items.length * reps * 5)}s">${copy}${copy}</div>`;
@@ -629,6 +629,7 @@
     const el = document.getElementById('price-status');
     const r = App.res;
     if (!r || r.empty) { el.style.display = 'none'; return; }
+    if (App.live && App.live.pill(el)) return;
     el.style.display = '';
     const missing = r.positions.some(p => p.missingPrice);
     const age = r.asOf - r.lastPriceDay;
@@ -667,9 +668,13 @@
     bindCommon(document);
     App.renderTape();
     renderStatus();
+    navOverflow();
     const m1 = r && !r.empty ? App.metrics('1D') : null;
     document.body.setAttribute('data-mood', m1 && isFinite(m1.pnl) && Math.abs(m1.pnl) > 0.5 ? (m1.pnl > 0 ? 'up' : 'down') : 'flat');
   };
+  App.renderStatus = renderStatus;
+  // the top navigation scrolls sideways when it does not fit; fade its edge so a cut-off link looks intended
+  function navOverflow() { const n = document.getElementById('nav'); if (n) n.classList.toggle('more', n.scrollWidth > n.clientWidth + 1); }
   App.defaultActions = () => `<button class="btn" data-act="prices">${App.icon('refresh')}Update prices</button><button class="btn" data-act="add-cash">${App.icon('plus')}Cash</button>`;
   App.bannerHTML = function () {
     let h = '';
@@ -810,9 +815,11 @@
         c.style.setProperty('--my', (lastEv.clientY - r.top) + 'px');
       });
     }, { passive: true });
+    window.addEventListener('resize', navOverflow, { passive: true });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { App.charts.forEach(c => { try { c.update('none'); } catch (e) { /* noop */ } }); });
     App.recompute();
     App.parseRoute();
     App.render();
+    if (App.live) App.live.boot();
   };
 })();

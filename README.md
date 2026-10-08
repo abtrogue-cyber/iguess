@@ -1,12 +1,18 @@
 # Conviction — portfolio performance tracker
 
-A single, self-contained web app (`index.html`) for a concentrated multi-currency portfolio held at DEGIRO and Interactive Brokers. Open the file in a browser; everything runs locally and is stored in `localStorage`. Only Chart.js (jsDelivr, SRI-pinned) and the Inter font (Google Fonts) are loaded from a CDN.
+A single, self-contained web app (`index.html`) for a concentrated multi-currency portfolio held at DEGIRO and Interactive Brokers. Open the file in a browser; everything runs locally and is stored in `localStorage`. Chart.js (jsDelivr, SRI-pinned) and the fonts (Google Fonts) load from a CDN. If you turn on live prices, quotes come from the provider you choose.
 
 ## What it does
 
 - **Import** DEGIRO *Transactions* and *Account statement* CSVs (DE/EN/NL headers, German decimals), IBKR *Activity Statement*, *Transaction History* and *Flex Query* CSVs, and any other CSV through a manual column mapper. Re-imports are de-duplicated. The same security from both brokers is linked by ISIN, broker symbol or name, and you can merge instruments by hand.
 - **Manual entry** of trades (buy/sell, split, transfer in/out, options via OCC symbol) and cash movements (deposits, withdrawals, dividends with withholding tax, interest, fees).
-- **Prices you control**: an "update prices" table, a paste box (`TICKER price` lines or JSON), and CSV price/FX/benchmark history. Nothing is fetched or faked.
+- **Live prices (optional)**: paste a free API key from [Finnhub](https://finnhub.io/register) or [Twelve Data](https://twelvedata.com/register) under *Data → Prices*.
+  - Quotes are fetched each time the app opens, then every minute (Twelve Data: every five) while the US market is open. Each holding keeps one price per day, so its history fills in as you use the app.
+  - Exchange rates come from the ECB via [Frankfurter](https://frankfurter.dev), no key needed.
+  - The free plans cover US-listed shares and ETFs. Give a holding listed elsewhere its provider symbol, such as a US OTC listing; a quote in another currency is converted at the ECB rate.
+  - Options and warrants keep manual prices.
+  - The key stays in your browser and is never part of the data or backups.
+- **Prices you control**: an "update prices" table, a paste box (`TICKER price` lines or JSON), and CSV price/FX/benchmark history. Nothing is invented: without live prices, a holding is valued at the last price you entered or traded at.
 - **Metrics**: total value, net invested, absolute/simple return, TWR and XIRR, FIFO realised/unrealised P&L, price vs. currency effect, dividends/fees/tax as separate drags, volatility, max drawdown, Sharpe, Sortino, beta, concentration (top-3, effective N, threshold warning), and comparison with three benchmarks. Every formula is in an ⓘ tooltip.
 - **Views**: Dashboard, Positions, Position detail, Allocation (position/theme tag/sector/currency/country/broker), Performance (heatmap, drawdown, rolling 12M), Closed positions (win rate, holding period, best/worst, per-year table), Activity, Data & prices, Checks, Settings.
 - **Backup**: JSON export and restore, plus a trades CSV.
@@ -41,9 +47,10 @@ node tools/build.js   # rebuild index.html
 | `src/engine-core.js` | dates, number/date parsing, CSV, XIRR, series lookup |
 | `src/engine-calc.js` | FIFO, cash, daily valuation, TWR, risk, attribution |
 | `src/engine-import.js` | broker importers, instrument linking, de-duplication |
+| `src/engine-live.js` | live prices: symbol choice, quote parsing, currency translation, storage, US market hours |
 | `src/engine-demo.js` | deterministic synthetic demo portfolio |
 | `src/engine-tests.js` | hand-calculated verification cases (also shown on the in-app *Checks* page) |
-| `src/app-*.js`, `src/styles.css` | UI |
+| `src/app-*.js`, `src/styles.css` | UI (`app-live.js`: fetching quotes and ECB rates, the Live prices card) |
 
 ## Conventions
 

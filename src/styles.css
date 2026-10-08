@@ -141,6 +141,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .logo .word { font-stretch: 125%; font-weight: 700; font-size: 13px; letter-spacing: 0.17em; }
 .nav { display: flex; gap: 0; height: 100%; overflow-x: auto; scrollbar-width: none; }
 .nav::-webkit-scrollbar { display: none; }
+.nav.more { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
 .nav a {
   position: relative; display: flex; align-items: center; height: 100%; padding: 0 11px; color: var(--muted); text-decoration: none !important;
   font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; white-space: nowrap; transition: color 0.15s;
@@ -159,6 +160,10 @@ kbd { font-family: var(--mono); font-size: 10px; padding: 2px 5px; border: 1px s
 .status i { width: 6px; height: 6px; border-radius: 50%; background: var(--gain); box-shadow: 0 0 10px var(--gain); flex: none; }
 .status.stale i { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
 .status.bad i { background: var(--loss); box-shadow: 0 0 10px var(--loss); }
+.status.live { color: var(--text); }
+.status.live i { animation: live 2.4s ease-in-out infinite; }
+.status.live.busy i { animation-duration: .7s; }
+@keyframes live { 50% { opacity: .35; box-shadow: 0 0 2px var(--gain); } }
 .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--r); padding: 2px; gap: 2px; background: var(--panel-2); }
 .seg button { border: 0; background: transparent; height: 26px; min-width: 28px; padding: 0 9px; border-radius: 2px; cursor: pointer; color: var(--muted); font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s, color .15s; }
 .seg button svg { width: 13px; height: 13px; }
