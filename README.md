@@ -27,7 +27,11 @@ An "instrument panel" look rather than a dashboard template:
 - **Interaction:**
   - Hover or drag the hero chart to scrub through time; the net asset value and P&L update to that date.
   - Charts have TradingView-style crosshairs with axis tags and direct end labels.
-  - The portfolio and exposure heat-maps are squarified treemaps, coloured by P&L % or the last price move.
+  - The portfolio map is a zoomable treemap:
+    - Click a holding to open it into its purchase lots (each sized by value and coloured by its own return); breadcrumbs or Esc zoom back out.
+    - Lenses: size by value, gain or cost; colour by return since bought, 1 day, 1 month or this year.
+    - Larger tiles show the holding's price path behind the numbers.
+    - **Explore** (or the `M` key) opens it full screen with a time machine. Drag through your history or press play to watch holdings appear, grow and leave, with captions for each buy, sale and broker move. A dossier shows the holding's price chart with your trades, average cost and lots.
   - Odometer digits roll in on load.
   - A ticker tape shows the latest stored prices.
   - A command palette (Ctrl/⌘ K or `/`) jumps to positions, views and actions.

@@ -1,6 +1,6 @@
 /* =====================================================================
  * App shell: state, persistence, formatting, tooltips, modal, command
- * palette, ticker tape, odometer, chart plugins, treemap, router.
+ * palette, ticker tape, odometer, chart plugins, treemap layout, router.
  * Views live in app-views.js / app-data.js.
  * ===================================================================== */
 (function () {
@@ -37,7 +37,8 @@
     moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>', alert: '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.5"/>',
     spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>', file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
     link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-    search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>'
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>', expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-6.5 6.5M4 20l6.5-6.5"/>'
   };
   App.icon = (n, sw) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw || 1.7}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -193,7 +194,7 @@
     winrate: '<b>Win rate</b><br><code>round trips with realised P&L > 0 ÷ all closed round trips</code><br>A round trip runs from flat to flat; P&L is after fees.',
     pf: '<b>Profit factor</b><br><code>Σ winning P&L ÷ |Σ losing P&L|</code>',
     attribution: '<b>Return attribution</b> — all-time, EUR. Price + currency effects are gross of fees; fees, withholding tax and interest are shown as separate drags. The bars add up to value − net invested; any gap is shown as “Other”.',
-    map: '<b>Portfolio map</b> — tile area = market value (long positions). Colour = unrealised P&L % (or the last price move in 1D mode), on a diverging scale with grey at zero.',
+    map: '<b>Portfolio map</b> — tile area = market value of each long position; colour = return since bought (or the move over 1 day, 1 month, this year) on a diverging scale, grey at zero.<br>Click a holding to open it into its purchase lots; <b>Explore</b> (or <kbd>M</kbd>) goes full screen with a time machine that replays your holdings day by day.',
     movers: '<b>Movers</b> — change between the two most recent stored prices of each holding, in its own currency.',
     mwr_period: 'XIRR for a sub-period starts with the portfolio value at the beginning of the period as the initial investment.'
   };
@@ -519,50 +520,6 @@
     }
     return out;
   };
-  /**
-   * items: [{v, label, metricText, sub, href, tip, color:{bg,ink}, g?}] — v = area weight.
-   * opts.groups: nest by item.g with a header strip per group.
-   */
-  App.treemap = function (el, items, opts) {
-    opts = opts || {};
-    const tot = items.reduce((s, x) => s + Math.max(0, x.v), 0);
-    const tile = (t) => {
-      const it = t.ref;
-      const x0 = Math.round(t.x), y0 = Math.round(t.y), w = Math.max(0, Math.round(t.x + t.w) - x0 - 1), h = Math.max(0, Math.round(t.y + t.h) - y0 - 1);
-      if (w < 2 || h < 2) return '';
-      const area = Math.sqrt(w * h);
-      const fsM = Math.max(13, Math.min(34, area / 6.2)), fsT = Math.max(10, Math.min(15, area / 11));
-      const big = w > 92 && h > 66, mid = w > 46 && h > 30;
-      const inner = (mid ? `<div class="tm-t" style="font-size:${fsT}px">${esc(it.label)}</div>` : '') +
-        (big ? `<div><div class="tm-m" style="font-size:${fsM}px">${esc(it.metricText)}</div><div class="tm-w">${esc(it.sub)}</div></div>` : (mid && h > 44 ? `<div class="tm-w">${esc(it.metricText)}</div>` : ''));
-      return `<a class="tm-tile" href="${it.href}" style="left:${x0}px;top:${y0}px;width:${w}px;height:${h}px;background:${it.color.bg};color:${it.color.ink}" data-tip-html="${esc(it.tip)}" aria-label="${esc(it.label + ' ' + it.metricText)}">${inner}</a>`;
-    };
-    const draw = () => {
-      const W = el.clientWidth, H = el.clientHeight;
-      if (!W || !H) return;
-      if (!(tot > 0)) { el.innerHTML = '<div class="chart-fallback">No long positions to map.</div>'; return; }
-      let html = '';
-      if (opts.groups) {
-        const gm = {};
-        items.forEach(it => { const k = it.g || 'Other'; (gm[k] = gm[k] || { k, v: 0, items: [] }); gm[k].v += it.v; gm[k].items.push(it); });
-        App.squarify(Object.values(gm).map(g => ({ ref: g, area: g.v / tot * W * H })), 0, 0, W, H).forEach(R => {
-          const gh = R.h > 50 && R.w > 70 ? 20 : 0;
-          const gx = Math.round(R.x), gy = Math.round(R.y), gw = Math.round(R.x + R.w) - gx - 1;
-          if (gh) html += `<div class="tm-g" style="left:${gx}px;top:${gy}px;width:${gw}px;height:${gh}px"><b>${esc(R.ref.k)}</b><span>${F.pct(R.ref.v / tot, { sign: false, dec: 1 })}</span></div>`;
-          App.squarify(R.ref.items.map(it => ({ ref: it, area: it.v / R.ref.v * R.w * (R.h - gh) })), R.x, R.y + gh, R.w, R.h - gh).forEach(t => { html += tile(t); });
-        });
-      } else {
-        App.squarify(items.map(it => ({ ref: it, area: it.v / tot * W * H })), 0, 0, W, H).forEach(t => { html += tile(t); });
-      }
-      el.innerHTML = html;
-    };
-    draw();
-    if (window.ResizeObserver) {
-      let lastW = el.clientWidth;
-      const ro = new ResizeObserver(() => { if (el.clientWidth !== lastW) { lastW = el.clientWidth; draw(); } });
-      ro.observe(el); App.observers.push(ro);
-    }
-  };
   App.mapLegend = function (cap, label) {
     const T = App.theme();
     const stops = [-1, -0.5, 0, 0.5, 1].map(v => App.divColor(v * cap, cap, T).bg);
@@ -670,6 +627,7 @@
     App.renderTape();
     renderStatus();
     navOverflow();
+    if (App.mapOverlay) App.mapOverlay.refresh();
     const m1 = r && !r.empty ? App.metrics('1D') : null;
     document.body.setAttribute('data-mood', m1 && isFinite(m1.pnl) && Math.abs(m1.pnl) > 0.5 ? (m1.pnl > 0 ? 'up' : 'down') : 'flat');
   };
@@ -730,6 +688,7 @@
       ...s.instruments.filter(i => !openIds.has(i.id)).map(i => ({ g: 'Instruments', t: App.instLabel(i), d: (i.name || '') + ' · closed', run: () => App.go('position/' + i.id) })),
       { g: 'Actions', t: 'Add transaction', d: 'Buy, sell, split, broker transfer', run: () => App.tradeForm() },
       { g: 'Actions', t: 'Add cash movement', d: 'Deposit, withdrawal, dividend, interest, fee', run: () => App.cashForm() },
+      { g: 'Actions', t: 'Explore portfolio map', d: 'Full screen · zoom into lots · replay since your first trade', run: () => App.openMap() },
       { g: 'Actions', t: 'Update prices', d: 'Manual price table, JSON paste, history', run: () => { App.ui.dataTab = 'prices'; App.go('data'); } },
       { g: 'Actions', t: 'Import CSV', d: 'DEGIRO · IBKR · generic', run: () => { App.ui.dataTab = 'import'; App.go('data'); } },
       { g: 'Actions', t: 'Toggle theme', d: s.settings.theme === 'light' ? 'Switch to dark' : 'Switch to light', run: () => App.setTheme(s.settings.theme === 'light' ? 'dark' : 'light') },
@@ -801,6 +760,7 @@
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); App.palette(); return; }
       if (e.key === 'Escape') { App.closeModal(); const p = document.querySelector('.pal-back'); if (p) p.remove(); return; }
       if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && !document.querySelector('.modal-back')) { e.preventDefault(); App.palette(); }
+      if ((e.key === 'm' || e.key === 'M') && !e.metaKey && !e.ctrlKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && !document.querySelector('.modal-back, .pal-back') && App.openMap) { e.preventDefault(); App.openMap(); }
     });
     // cursor spotlight on panels
     let raf = 0, lastEv = null;

@@ -120,6 +120,7 @@
     const tradeCash = [];      // [day, eurAmount]  (non-external cash)
     const inKind = [];         // [day, eurValue]  securities deposited without a matching transfer-out (external flow)
     const instState = {};
+    const timeline = {};       // instId → [[day, qty, costEUR, broker], …] after every event (for the map's time machine)
     let tradeFeesTotal = 0;
 
     Object.keys(byInst).forEach(id => {
@@ -129,6 +130,13 @@
       instState[id] = st;
       const optExp = inst.type === 'option' && inst.expiry ? dn(inst.expiry) : null;
       const qNow = () => st.lots.reduce((s, l) => s + l.q, 0);
+      const tl = timeline[id] = [];
+      const snap = d => {
+        let q = 0, cost = 0;
+        st.lots.forEach(l => { q += l.q; cost += l.q * l.uc + Math.abs(l.q) * l.uf; });
+        const row = [d, Math.abs(q) < EPS ? 0 : q, cost, st.broker || null];
+        if (tl.length && tl[tl.length - 1][0] === d) tl[tl.length - 1] = row; else tl.push(row);
+      };
 
       const closeAndOpen = (t, sign /* +1 buy, -1 sell */, opts2) => {
         const mult = t.mult;
@@ -187,7 +195,7 @@
       };
 
       for (const t of list) {
-        if (optExp !== null && !st.expired && t.d > optExp && optExp <= asOf) expire();
+        if (optExp !== null && !st.expired && t.d > optExp && optExp <= asOf) { expire(); snap(optExp); }
         if (t.type === 'buy' || t.type === 'sell') {
           const sign = t.type === 'buy' ? 1 : -1;
           closeAndOpen(t, sign);
@@ -223,8 +231,9 @@
           }
           if (t.broker) st.broker = t.broker;
         }
+        snap(t.d);
       }
-      if (optExp !== null && !st.expired && optExp <= asOf) expire();
+      if (optExp !== null && !st.expired && optExp <= asOf) { expire(); snap(optExp); }
       st.qty = qNow();
     });
 
@@ -431,7 +440,7 @@
         dividendsNet: att.dividends + att.taxes, deposits: att.deposits, withdrawals: att.withdrawals,
         tradeFees: tradeFeesTotal, otherFees: -att.fees, interest: att.interest
       },
-      instState, instById, priceSeries, fxSeries, fxAt, missingFx: [...missingFx], missingPrice: [...missingPrice], inKind
+      instState, instById, priceSeries, fxSeries, fxAt, missingFx: [...missingFx], missingPrice: [...missingPrice], inKind, timeline
     };
     res.totals.simpleReturn = res.totals.netInvested > EPS ? res.totals.pnl / res.totals.netInvested : NaN;
     return res;
@@ -563,6 +572,33 @@
     i0 = i0 || 0; i1 = i1 == null ? res.N - 1 : i1;
     let peak = i0 > 0 ? res.IDX[i0 - 1] : 1;
     for (let k = i0; k <= i1; k++) { if (res.IDX[k] > peak) peak = res.IDX[k]; out.push([res.days[k], res.IDX[k] / peak - 1]); }
+    return out;
+  };
+
+  /** Holdings on any day, rebuilt from the timeline: quantity, EUR value at that day's price and FX, cost of the
+   *  open lots, broker. move(baseDay) gives the EUR price change since another day (1D, 1M, YTD …). */
+  PT.holdingsAt = function (res, d) {
+    const out = [];
+    if (!res || res.empty || !res.timeline) return out;
+    Object.keys(res.timeline).forEach(id => {
+      const tl = res.timeline[id];
+      let lo = 0, hi = tl.length - 1, k = -1;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if (tl[m][0] <= d) { k = m; lo = m + 1; } else hi = m - 1; }
+      if (k < 0 || !tl[k][1]) return;
+      const inst = res.instById[id];
+      const qty = tl[k][1], cost = tl[k][2], cur = inst.currency || 'EUR', mult = +(inst.multiplier || 1);
+      const ps = res.priceSeries[id];
+      const at = day => ps && ps.n ? ps.at(day) : NaN;
+      const p = at(d), x = res.fxAt(cur, d);
+      const value = p >= 0 && x > 0 ? qty * mult * p / x : NaN;
+      let i = k;
+      while (i > 0 && tl[i - 1][1]) i--; // start of the current holding period
+      out.push({
+        id, inst, qty, cost, broker: tl[k][3], since: tl[i][0],
+        price: p, currency: cur, fx: x, value, gain: value - cost, ret: cost > 0 ? value / cost - 1 : NaN,
+        move(base) { const pb = at(base), xb = res.fxAt(cur, base); return p > 0 && pb > 0 && x > 0 && xb > 0 ? (p / x) / (pb / xb) - 1 : NaN; }
+      });
+    });
     return out;
   };
 

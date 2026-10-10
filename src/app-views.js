@@ -154,21 +154,6 @@
   };
 
   /* ----------------------------------------------------- map helpers */
-  function mapItems(positions, colorBy, groupFn) {
-    const T = App.theme();
-    const cap = colorBy === 'day' ? 0.05 : 1;
-    return positions.filter(p => p.value > 0).map(p => {
-      const m = colorBy === 'day' ? (p.dayFresh ? p.dayPct : NaN) : p.unrealPct;
-      return {
-        v: p.value, label: App.instLabel(p.inst), metricText: isFinite(m) ? F.pct(m, { dec: 1 }) : '—',
-        sub: `${F.pct(p.weight, { sign: false, dec: 1 })} · ${F.eur(p.value, { dec: 0, compact: true })}`, href: '#/position/' + p.id,
-        color: App.divColor(m, cap, T), g: groupFn ? groupFn(p) : null,
-        tip: `<div class="tt-h">${esc(App.instLabel(p.inst))} · ${esc(p.inst.type === 'option' ? p.inst.ticker : p.inst.name)}</div><div class="tt-big">${F.eur(p.value)}</div>Weight ${F.pct(p.weight, { sign: false, dec: 1 })}<br>Unrealised ${F.eur(p.unreal, { sign: true, dec: 0 })} (${F.pct(p.unrealPct, { dec: 1 })})<br>Last move ${p.dayFresh ? F.pct(p.dayPct) : '—'}${p.dayTo ? ' · ' + F.date(p.dayTo, 'dm') : ''}`
-      };
-    });
-  }
-  const mapColorSeg = (cur) => `<div class="seg"><button class="${cur !== 'day' ? 'on' : ''}" data-mapc="pnl">P&L %</button><button class="${cur === 'day' ? 'on' : ''}" data-mapc="day">1D</button></div>`;
-  const bindMapColor = root => root.querySelectorAll('[data-mapc]').forEach(b => b.addEventListener('click', () => { App.ui.mapColor = b.dataset.mapc; App.render(); }));
 
   /* ============================================================ dashboard */
   V.dashboard = function () {
@@ -230,7 +215,7 @@
       </section>
 
       <div class="card c-7">
-        <div class="card-h"><h2>Portfolio map</h2>${tip('map')}<div class="right">${App.mapLegend(ui.mapColor === 'day' ? 0.05 : 1, ui.mapColor === 'day' ? 'last move' : 'unrealised')}${mapColorSeg(ui.mapColor)}</div></div>
+        <div class="card-h"><h2>Portfolio map</h2>${tip('map')}<div class="right">${App.mapLegendFor((App.ui.pm || {}).color || 'ret') + App.mapLensSeg((App.ui.pm || {}).color || 'ret')}<button class="btn sm" data-pm-open title="Full screen, with a time machine (M)">${App.icon('expand')}Explore</button></div></div>
         <div class="tm" id="tm-dash" style="height:356px"></div>
       </div>
 
@@ -304,9 +289,8 @@
         };
         App.equityChart('ch-eq', ui.eqPeriod, ui.eqMode === 'perf' ? 'perf' : 'value', ui.eqBench, { scrub, leave: restore });
         root.querySelector('#ch-eq').addEventListener('mouseleave', restore);
-        App.treemap(root.querySelector('#tm-dash'), mapItems(r.positions, ui.mapColor));
+        App.pmap(root.querySelector('#tm-dash'));
         App.attributionChart('ch-attr');
-        bindMapColor(root);
         root.querySelectorAll('[data-eqp]').forEach(b => b.addEventListener('click', () => { ui.eqPeriod = b.dataset.eqp; App.render(); }));
         root.querySelectorAll('[data-eqmode]').forEach(b => b.addEventListener('click', () => { ui.eqMode = b.dataset.eqmode; App.render(); }));
         App.bindBenchToggles(root);
@@ -380,7 +364,7 @@
         <div class="card-h" style="padding-bottom:16px">
           <h2>${ui.posView === 'map' ? 'Holdings map' : 'Open positions'}</h2><span class="sub">${F.eur(sum.value, { dec: 0 })} · ${F.pct(sum.w, { sign: false, dec: 1 })} of portfolio</span>
           <div class="right">
-            ${ui.posView === 'map' ? App.mapLegend(ui.mapColor === 'day' ? 0.05 : 1, ui.mapColor === 'day' ? 'last move' : 'unrealised') + mapColorSeg(ui.mapColor) : `<input type="search" id="pos-q" placeholder="Search ticker, name, tag…" value="${esc(ui.posQuery)}" style="width:220px"><label class="check"><input type="checkbox" id="pos-opt" ${ui.posOptions ? 'checked' : ''}> Options</label>`}
+            ${ui.posView === 'map' ? App.mapLegendFor((App.ui.pm || {}).color || 'ret') + App.mapLensSeg((App.ui.pm || {}).color || 'ret') + `<button class="btn sm" data-pm-open>${App.icon('expand')}Explore</button>` : `<input type="search" id="pos-q" placeholder="Search ticker, name, tag…" value="${esc(ui.posQuery)}" style="width:220px"><label class="check"><input type="checkbox" id="pos-opt" ${ui.posOptions ? 'checked' : ''}> Options</label>`}
             <div class="seg accent"><button class="${ui.posView !== 'map' ? 'on' : ''}" data-pv="table">Table</button><button class="${ui.posView === 'map' ? 'on' : ''}" data-pv="map">Map</button></div>
           </div>
         </div>
@@ -391,7 +375,7 @@
       title: 'Positions', html,
       mount(root) {
         root.querySelectorAll('[data-pv]').forEach(b => b.addEventListener('click', () => { ui.posView = b.dataset.pv; App.render(); }));
-        if (ui.posView === 'map') { App.treemap(root.querySelector('#tm-pos'), mapItems(r.positions, ui.mapColor)); bindMapColor(root); return; }
+        if (ui.posView === 'map') { App.pmap(root.querySelector('#tm-pos')); return; }
         root.querySelectorAll('[data-sort]').forEach(t => t.addEventListener('click', () => { const k = t.dataset.sort; ui.posSort = { k, dir: ui.posSort.k === k ? -ui.posSort.dir : (k === 'ticker' || k === 'currency' ? 1 : -1) }; App.render(); }));
         root.querySelectorAll('[data-pos]').forEach(tr => tr.addEventListener('click', e => { if (e.target.closest('a,button')) return; App.go('position/' + tr.dataset.pos); }));
         const qi = root.querySelector('#pos-q');
@@ -605,7 +589,7 @@
       <div class="grid g-12">
         <div class="card c-12">
           <div class="card-h"><h2>Exposure map</h2>${tip('map')}<span class="sub">grouped by ${GROUPS[grp][0].toLowerCase()}${grp === 'theme' ? ' (primary tag)' : ''}</span>
-            <div class="right">${App.mapLegend(ui.mapColor === 'day' ? 0.05 : 1, ui.mapColor === 'day' ? 'last move' : 'unrealised')}${mapColorSeg(ui.mapColor)}
+            <div class="right">${App.mapLegendFor((App.ui.pm || {}).color || 'ret') + App.mapLensSeg((App.ui.pm || {}).color || 'ret')}
               <div class="seg">${Object.keys(GROUPS).map(k => `<button class="${k === grp ? 'on' : ''}" data-grp="${k}">${GROUPS[k][0]}</button>`).join('')}</div></div></div>
           <div class="tm" id="tm-alloc" style="height:min(560px, 66vh)"></div>
         </div>
@@ -622,8 +606,7 @@
     return {
       title: 'Allocation', html,
       mount(root) {
-        App.treemap(root.querySelector('#tm-alloc'), mapItems(r.positions, ui.mapColor, GROUPS[grp][1]), { groups: !!GROUPS[grp][1] });
-        bindMapColor(root);
+        App.pmap(root.querySelector('#tm-alloc'), { group: grp });
         root.querySelectorAll('[data-grp]').forEach(b => b.addEventListener('click', () => { ui.allocGroup = b.dataset.grp; App.render(); }));
         root.querySelector('#al-cash').addEventListener('change', e => App.commit(s => { s.settings.showCashInAlloc = e.target.checked; }));
         root.querySelectorAll('[data-cls]').forEach(inp => inp.addEventListener('change', () => App.commit(s => { const i = s.instruments.find(x => x.id === inp.dataset.id); i[inp.dataset.cls] = inp.value.trim(); })));

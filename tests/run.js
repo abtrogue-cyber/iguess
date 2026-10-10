@@ -18,7 +18,7 @@ for (const t of PT.selfTests()) {
   console.log(`${t.ok ? 'PASS' : 'FAIL'}  [${t.group}] ${t.label.padEnd(72)} hand ${fmt(t.hand, t.fmt).padStart(12)}  engine ${fmt(t.engine, t.fmt).padStart(12)}`);
 }
 
-['import.test.js', 'live.test.js'].forEach(f => {
+['import.test.js', 'live.test.js', 'map.test.js'].forEach(f => {
   const extra = path.join(__dirname, f);
   if (fs.existsSync(extra)) fails += require(extra)(PT);
 });
