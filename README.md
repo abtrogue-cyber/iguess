@@ -29,7 +29,7 @@ An "instrument panel" look rather than a dashboard template:
   - Charts have TradingView-style crosshairs with axis tags and direct end labels.
   - The portfolio map is a zoomable treemap:
     - Click a holding to open it into its purchase lots (each sized by value and coloured by its own return); breadcrumbs or Esc zoom back out.
-    - Lenses: size by value, gain or cost; colour by return since bought, 1 day, 1 month or this year.
+    - Lenses: size by value, gain or cost; colour by return since bought, 1 day, 1 month or this year. A move needs prices recorded within a week of both ends of the period; otherwise the tile shows a dash rather than 0 %.
     - Larger tiles show the holding's price path behind the numbers.
     - **Explore** (or the `M` key) opens it full screen with a time machine. Drag through your history or press play to watch holdings appear, grow and leave, with captions for each buy, sale and broker move. A dossier shows the holding's price chart with your trades, average cost and lots.
   - Odometer digits roll in on load.

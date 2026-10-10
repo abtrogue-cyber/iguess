@@ -575,8 +575,24 @@
     return out;
   };
 
+  /** Price-and-currency move of an instrument from day base to day d, in EUR. NaN unless a price was observed within
+   *  a week before each end: a warrant valued only at its purchase price, or a price last seen months ago, has no move to show. */
+  PT.periodMove = function (res, id, cur, d, base) {
+    const ps = res.priceSeries[id];
+    const e = ps && ps.n ? ps.exactOrBefore(d) : null, b = ps && ps.n ? ps.exactOrBefore(base) : null;
+    if (!e || !b || e[0] <= b[0] || d - e[0] > 7 || base - b[0] > 7) return NaN;
+    const p = ps.at(d), pb = ps.at(base), x = res.fxAt(cur, d), xb = res.fxAt(cur, base);
+    return p > 0 && pb > 0 && x > 0 && xb > 0 ? (p / x) / (pb / xb) - 1 : NaN;
+  };
+  /** The last price move on or before day d (previous observation → latest), as a position's dayPct: NaN unless the latest
+   *  price is at most 4 days old and the one before it at most 5 days older, so a weekend shows Friday's move. */
+  PT.lastMove = function (res, id, d) {
+    const ps = res.priceSeries[id];
+    const e = ps && ps.n ? ps.exactOrBefore(d) : null, b = e ? ps.exactOrBefore(e[0] - 1) : null;
+    return e && b && d - e[0] <= 4 && e[0] - b[0] <= 5 && b[1] > 0 ? e[1] / b[1] - 1 : NaN;
+  };
   /** Holdings on any day, rebuilt from the timeline: quantity, EUR value at that day's price and FX, cost of the
-   *  open lots, broker. move(baseDay) gives the EUR price change since another day (1D, 1M, YTD …). */
+   *  open lots, broker. dayPct is the last price move; move(baseDay) gives the EUR price change since another day (1M, YTD …). */
   PT.holdingsAt = function (res, d) {
     const out = [];
     if (!res || res.empty || !res.timeline) return out;
@@ -596,7 +612,7 @@
       out.push({
         id, inst, qty, cost, broker: tl[k][3], since: tl[i][0],
         price: p, currency: cur, fx: x, value, gain: value - cost, ret: cost > 0 ? value / cost - 1 : NaN,
-        move(base) { const pb = at(base), xb = res.fxAt(cur, base); return p > 0 && pb > 0 && x > 0 && xb > 0 ? (p / x) / (pb / xb) - 1 : NaN; }
+        dayPct: PT.lastMove(res, id, d), move: base => PT.periodMove(res, id, cur, d, base)
       });
     });
     return out;

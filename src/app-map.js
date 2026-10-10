@@ -35,11 +35,8 @@
 
   /* ================================================================= data */
   function mover(id, cur, d) {
-    const r = App.res, ps = r.priceSeries[id];
-    const at = x => ps && ps.n ? ps.at(x) : NaN;
-    const p = at(d), x = r.fxAt(cur, d), last = ps && ps.n ? ps.dateAt(d) : null;
-    // no price observed inside the period (e.g. a warrant valued at its trade price) → unknown, not 0 %
-    return base => { if (last == null || last <= base) return NaN; const pb = at(base), xb = r.fxAt(cur, base); return p > 0 && pb > 0 && x > 0 && xb > 0 ? (p / x) / (pb / xb) - 1 : NaN; };
+    const r = App.res;
+    return base => PT.periodMove(r, id, cur, d, base);
   }
   /** Bank warrants are known by their WKN; on the map they read better as "AMD CALL 200". */
   function shortName(inst) {
@@ -80,7 +77,7 @@
     return PT.holdingsAt(App.res, d).filter(h => h.value > 0).map(h => ({
       key: 'h:' + h.id, kind: 'h', id: h.id, inst: h.inst, label: shortName(h.inst), name: h.inst.type === 'option' ? h.inst.ticker : (h.inst.name || ''),
       value: h.value, cost: h.cost, gain: h.gain, ret: h.ret, qty: h.qty, price: h.price, cur: h.currency, fx: h.fx, mult: +(h.inst.multiplier || 1),
-      broker: h.broker, since: h.since, dayPct: NaN, lots: null, move: h.move
+      broker: h.broker, since: h.since, dayPct: h.dayPct, lots: null, move: h.move
     }));
   }
   const atCache = new Map();
@@ -100,20 +97,14 @@
   }
   function colorMetric(n, lens, day) {
     if (n.kind === 'l' || lens === 'ret') return n.ret;
-    if (n.kind === 'g') { const c = n.children.reduce((s, h) => s + h.cost, 0), v = n.children.reduce((s, h) => s + h.value, 0); if (lens === 'ret') return c > 0 ? v / c - 1 : NaN; }
     const base = lens === 'd1' ? null : lens === 'm1' ? day - 30 : PT.dn(PT.iso(day).slice(0, 4) + '-01-01') - 1;
     if (n.kind === 'g') {
       // value-weighted move of the group
       let w = 0, s = 0;
-      n.children.forEach(h => { const m = lens === 'd1' ? dayMove(h, day) : h.move(base); if (isFinite(m)) { s += m * h.value; w += h.value; } });
+      n.children.forEach(h => { const m = lens === 'd1' ? h.dayPct : h.move(base); if (isFinite(m)) { s += m * h.value; w += h.value; } });
       return w ? s / w : NaN;
     }
-    return lens === 'd1' ? dayMove(n, day) : n.move(base);
-  }
-  function dayMove(h, day) {
-    if (isFinite(h.dayPct)) return h.dayPct;
-    let b = day - 1; while (PT.isWeekend(b)) b--;
-    return h.move(b);
+    return lens === 'd1' ? n.dayPct : n.move(base);
   }
   function tree(hs, group) {
     const g = GROUPS[group] && GROUPS[group][1];
